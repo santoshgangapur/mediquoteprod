@@ -1,0 +1,10 @@
+{
+  "name": "Prod MediQuote AI",
+  "description": "AI-powered clinical procurement and medical quotation comparison platform for surgical cases, medical record analysis, hospital quotes, and financing.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
