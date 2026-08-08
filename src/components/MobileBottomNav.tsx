@@ -8,11 +8,11 @@ interface MobileBottomNavProps {
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onNavigate }) => {
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#f3faff] border-t border-[#c3c6d4] h-16 flex items-center justify-around z-50 shadow-lg">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#c3c6d4] h-16 flex items-center justify-around z-40 px-2 shadow-2xl font-sans">
       <button
         onClick={() => onNavigate('dashboard')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'dashboard' ? 'text-[#003178]' : 'text-[#737783]'
+        className={`flex flex-col items-center justify-center w-14 py-1 rounded-xl transition-all ${
+          currentView === 'dashboard' ? 'text-[#003178]' : 'text-[#64748b] hover:text-[#003178]'
         }`}
       >
         <span
@@ -22,15 +22,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, o
         >
           dashboard
         </span>
-        <span className={`text-[10px] ${currentView === 'dashboard' ? 'font-bold' : 'font-medium'}`}>
+        <span className={`text-[10px] tracking-tight ${currentView === 'dashboard' ? 'font-extrabold' : 'font-medium'}`}>
           Home
         </span>
       </button>
 
       <button
         onClick={() => onNavigate('hospitals')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'hospitals' || currentView === 'recommendations' || currentView === 'hospital-profile' ? 'text-[#003178]' : 'text-[#737783]'
+        className={`flex flex-col items-center justify-center w-14 py-1 rounded-xl transition-all ${
+          currentView === 'hospitals' || currentView === 'recommendations' || currentView === 'hospital-profile' ? 'text-[#003178]' : 'text-[#64748b] hover:text-[#003178]'
         }`}
       >
         <span
@@ -40,51 +40,28 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, o
         >
           apartment
         </span>
-        <span className={`text-[10px] ${currentView === 'hospitals' || currentView === 'recommendations' || currentView === 'hospital-profile' ? 'font-bold' : 'font-medium'}`}>
+        <span className={`text-[10px] tracking-tight ${currentView === 'hospitals' || currentView === 'recommendations' || currentView === 'hospital-profile' ? 'font-extrabold' : 'font-medium'}`}>
           Hospitals
         </span>
       </button>
 
+      {/* Prominent Center Action for New Case */}
       <button
         onClick={() => onNavigate('new-case')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'new-case' ? 'text-[#003178]' : 'text-[#737783]'
-        }`}
+        className="flex flex-col items-center justify-center -mt-4"
       >
-        <span
-          className={`material-symbols-outlined text-[22px] ${
-            currentView === 'new-case' ? 'material-symbols-filled' : ''
-          }`}
-        >
-          add_notes
-        </span>
-        <span className={`text-[10px] ${currentView === 'new-case' ? 'font-bold' : 'font-medium'}`}>
+        <div className="w-12 h-12 rounded-full bg-[#003178] text-white flex items-center justify-center shadow-lg border-2 border-white ring-2 ring-[#003178]/20 transition-transform active:scale-95">
+          <span className="material-symbols-outlined text-[24px]">add</span>
+        </div>
+        <span className={`text-[10px] tracking-tight mt-0.5 ${currentView === 'new-case' ? 'font-extrabold text-[#003178]' : 'font-semibold text-[#64748b]'}`}>
           New Case
         </span>
       </button>
 
       <button
-        onClick={() => onNavigate('family')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'family' ? 'text-[#003178]' : 'text-[#737783]'
-        }`}
-      >
-        <span
-          className={`material-symbols-outlined text-[22px] ${
-            currentView === 'family' ? 'material-symbols-filled' : ''
-          }`}
-        >
-          family_restroom
-        </span>
-        <span className={`text-[10px] ${currentView === 'family' ? 'font-bold' : 'font-medium'}`}>
-          Family
-        </span>
-      </button>
-
-      <button
         onClick={() => onNavigate('quotes')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'quotes' || currentView === 'checkout' ? 'text-[#003178]' : 'text-[#737783]'
+        className={`flex flex-col items-center justify-center w-14 py-1 rounded-xl transition-all ${
+          currentView === 'quotes' || currentView === 'checkout' ? 'text-[#003178]' : 'text-[#64748b] hover:text-[#003178]'
         }`}
       >
         <span
@@ -95,8 +72,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, o
           medical_services
         </span>
         <span
-          className={`text-[10px] ${
-            currentView === 'quotes' || currentView === 'checkout' ? 'font-bold' : 'font-medium'
+          className={`text-[10px] tracking-tight ${
+            currentView === 'quotes' || currentView === 'checkout' ? 'font-extrabold' : 'font-medium'
           }`}
         >
           Quotes
@@ -104,27 +81,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, o
       </button>
 
       <button
-        onClick={() => onNavigate('medical-tourism')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'medical-tourism' ? 'text-[#003178]' : 'text-[#737783]'
-        }`}
-      >
-        <span
-          className={`material-symbols-outlined text-[22px] ${
-            currentView === 'medical-tourism' ? 'material-symbols-filled' : ''
-          }`}
-        >
-          flight_takeoff
-        </span>
-        <span className={`text-[10px] ${currentView === 'medical-tourism' ? 'font-bold' : 'font-medium'}`}>
-          Tourism
-        </span>
-      </button>
-
-      <button
         onClick={() => onNavigate('records')}
-        className={`flex flex-col items-center gap-1 ${
-          currentView === 'records' ? 'text-[#003178]' : 'text-[#737783]'
+        className={`flex flex-col items-center justify-center w-14 py-1 rounded-xl transition-all ${
+          currentView === 'records' ? 'text-[#003178]' : 'text-[#64748b] hover:text-[#003178]'
         }`}
       >
         <span
@@ -134,8 +93,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, o
         >
           folder_shared
         </span>
-        <span className={`text-[10px] ${currentView === 'records' ? 'font-bold' : 'font-medium'}`}>
-          Records
+        <span className={`text-[10px] tracking-tight ${currentView === 'records' ? 'font-extrabold' : 'font-medium'}`}>
+          Vault
         </span>
       </button>
     </nav>

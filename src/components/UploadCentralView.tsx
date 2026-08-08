@@ -314,6 +314,7 @@ export const UploadCentralView: React.FC<UploadCentralViewProps> = ({
       uploadDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       category: file.name.toLowerCase().includes('mri') || file.name.toLowerCase().includes('scan') ? 'RADIOLOGY' : 'DIAGNOSTIC',
       fileType: file.name.endsWith('.pdf') ? 'pdf' : file.name.endsWith('.dcm') || file.name.endsWith('.zip') ? 'zip' : 'image',
+      fileUrl: URL.createObjectURL(file),
       status: 'Uploaded',
       progressPercent: 100,
       patientMemberId: targetMember?.id || 'fam-1',
@@ -494,16 +495,24 @@ export const UploadCentralView: React.FC<UploadCentralViewProps> = ({
             onMemberChange={(memId) => setTargetUploadMemberId(memId)}
             submitButtonText="Process Scans & Add to Records Queue"
             onUploadSubmit={(queuedFiles) => {
-              const newRecs: MedicalRecord[] = queuedFiles.map((q, i) => ({
-                id: `rec-central-${Date.now()}-${i}`,
-                fileName: q.fileName,
-                fileSize: q.fileSize,
-                uploadDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-                category: q.aiCategory === 'SCAN_MRI' ? 'RADIOLOGY' : 'DIAGNOSTIC',
-                fileType: q.fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
-                status: 'Uploaded',
-                patientMemberId: targetUploadMemberId
-              }));
+              const targetMember = familyMembers.find((m) => m.id === targetUploadMemberId);
+              const targetMemberName = targetMember ? `${targetMember.fullName} (${targetMember.relationship})` : 'Arjun Mehta (Self Primary)';
+
+              const newRecs: MedicalRecord[] = queuedFiles.map((q, i) => {
+                const fileUrl = q.previewUrl || (q.file ? URL.createObjectURL(q.file) : q.url);
+                return {
+                  id: `rec-central-${Date.now()}-${i}`,
+                  fileName: q.fileName,
+                  fileSize: q.fileSize,
+                  uploadDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                  category: q.aiCategory === 'SCAN_MRI' ? 'RADIOLOGY' : 'DIAGNOSTIC',
+                  fileType: q.fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
+                  fileUrl: fileUrl,
+                  status: 'Uploaded',
+                  patientMemberId: targetUploadMemberId,
+                  patientMemberName: targetMemberName
+                };
+              });
 
               onAddRecords(newRecs);
               if (newRecs[0]) {

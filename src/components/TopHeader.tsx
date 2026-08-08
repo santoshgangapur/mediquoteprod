@@ -283,7 +283,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
           {/* Search Dropdown Popover Menu */}
           {isSearchOpen && (
-            <div className="absolute right-0 mt-2 w-[92vw] sm:w-[500px] md:w-[560px] max-h-[82vh] bg-white rounded-2xl shadow-2xl border border-[#c3c6d4] z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="fixed inset-x-3 top-16 sm:absolute sm:top-auto sm:right-0 sm:left-auto mt-2 sm:w-[500px] md:w-[560px] max-h-[82vh] bg-white rounded-2xl shadow-2xl border border-[#c3c6d4] z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
               {/* Search Input Header Row inside Dropdown */}
               <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                 <div className="relative flex-1 flex items-center">
@@ -712,7 +712,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#c3c6d4] p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-[#c3c6d4] p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#c3c6d4]">
                 <h4 className="font-bold text-[14px] text-[#003178]">Notifications (2)</h4>
                 <button

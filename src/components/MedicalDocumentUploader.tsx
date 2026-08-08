@@ -84,13 +84,11 @@ export const MedicalDocumentUploader: React.FC<MedicalDocumentUploaderProps> = (
     const newItems: QueuedMedicalFile[] = fileArray.map((file) => {
       const { aiCategory, aiTitle } = aiCategorizeMedicalDoc(file.name);
 
-      // Create instant object URL for image previews
+      // Create instant object URL for file previews
       let previewUrl: string | undefined = undefined;
-      if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
-        try {
-          previewUrl = URL.createObjectURL(file);
-        } catch (_e) {}
-      }
+      try {
+        previewUrl = URL.createObjectURL(file);
+      } catch (_e) {}
 
       return {
         id: `queue-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

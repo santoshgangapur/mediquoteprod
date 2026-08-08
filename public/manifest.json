@@ -1,5 +1,5 @@
 {
-  "id": "/",
+  "id": "mediquoteai.app",
   "short_name": "MediQuote AI",
   "name": "MediQuote AI - Clinical Procurement",
   "description": "Compare Surgical Costs & Get Instant AI Clinical Quotes",
@@ -54,5 +54,12 @@
       "label": "MediQuote AI Mobile Medical Tourism Assistant"
     }
   ],
-  "categories": ["medical", "health", "finance"]
+  "categories": ["medical", "health", "finance"],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=mediquoteai.app",
+      "id": "mediquoteai.app"
+    }
+  ]
 }

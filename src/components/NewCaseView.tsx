@@ -108,6 +108,9 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
         return;
       }
 
+      const selectedMem = familyMembers.find((m) => m.id === selectedMemberId);
+      const selectedMemberName = selectedMem ? `${selectedMem.fullName} (${selectedMem.relationship})` : 'Primary Patient Profile';
+
       const newRecs: MedicalRecord[] = filesArr.map((f: File, i: number) => ({
         id: `rec-upload-${Date.now()}-${i}`,
         fileName: f.name,
@@ -115,8 +118,10 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
         uploadDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         category: f.name.toLowerCase().includes('scan') || f.name.toLowerCase().includes('mri') ? 'RADIOLOGY' : 'DIAGNOSTIC',
         fileType: f.name.endsWith('.pdf') ? 'pdf' : 'image',
+        fileUrl: URL.createObjectURL(f),
         status: 'Uploaded',
         patientMemberId: selectedMemberId,
+        patientMemberName: selectedMemberName,
       }));
 
       onAddRecords(newRecs);
@@ -410,16 +415,24 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
             onMemberChange={(memId) => setSelectedMemberId(memId)}
             submitButtonText="Attach & Process Scans for Case"
             onUploadSubmit={(queuedFiles) => {
-              const newRecs: MedicalRecord[] = queuedFiles.map((q, i) => ({
-                id: `rec-upload-${Date.now()}-${i}`,
-                fileName: q.fileName,
-                fileSize: q.fileSize,
-                uploadDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-                category: q.aiCategory === 'SCAN_MRI' ? 'RADIOLOGY' : 'DIAGNOSTIC',
-                fileType: q.fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
-                status: 'Uploaded',
-                patientMemberId: selectedMemberId
-              }));
+              const selectedMem = familyMembers.find((m) => m.id === selectedMemberId);
+              const selectedMemberName = selectedMem ? `${selectedMem.fullName} (${selectedMem.relationship})` : 'Primary Patient Profile';
+
+              const newRecs: MedicalRecord[] = queuedFiles.map((q, i) => {
+                const fileUrl = q.previewUrl || (q.file ? URL.createObjectURL(q.file) : q.url);
+                return {
+                  id: `rec-upload-${Date.now()}-${i}`,
+                  fileName: q.fileName,
+                  fileSize: q.fileSize,
+                  uploadDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                  category: q.aiCategory === 'SCAN_MRI' ? 'RADIOLOGY' : 'DIAGNOSTIC',
+                  fileType: q.fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
+                  fileUrl: fileUrl,
+                  status: 'Uploaded',
+                  patientMemberId: selectedMemberId,
+                  patientMemberName: selectedMemberName
+                };
+              });
 
               onAddRecords(newRecs);
               setAttachedRecordIds((prev) => [...prev, ...newRecs.map((r) => r.id)]);

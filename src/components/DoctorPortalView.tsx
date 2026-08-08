@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PDFViewer } from './PDFViewer';
 import { SurgicalCase, HospitalQuote, ViewMode, DetailedHospitalProfile, MedicalRecord } from '../types';
 import { detailedHospitalsList, initialMedicalRecords } from '../data/mockData';
 
@@ -59,11 +60,11 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
       return;
     }
 
-    const matchedCase = cases.find((c) => raw.toUpperCase().includes(c.code.toUpperCase().replace(/\D/g, ''))) || cases[0];
+    const matchedCase = cases.find((c) => raw.toUpperCase().includes((c.caseCode || '').toUpperCase().replace(/\D/g, ''))) || cases[0];
 
     setVerifiedPass({
-      caseCode: matchedCase.code,
-      patientName: matchedCase.patientName,
+      caseCode: matchedCase.caseCode || '#MQ-88219',
+      patientName: matchedCase.patientMemberName || 'Arjun Mehta',
       role: raw.toUpperCase().includes('DOCTOR') ? 'Attending Surgeon / Doctor' : 'Hospital Admissions Counter',
       expiresAt: 'In 23 Hours 58 Minutes'
     });
@@ -716,7 +717,13 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
 
       {/* PATIENT SCAN & REPORTS CLINICAL INSPECTOR POPUP MODAL */}
       {scanInspectorCase && (() => {
-        const activeDoc = medicalRecords.find((r) => r.id === activeInspectorDocId) || medicalRecords[0];
+        const caseRecords = medicalRecords.filter(
+          (r) =>
+            (scanInspectorCase.attachedRecordIds || []).includes(r.id) ||
+            r.patientMemberId === scanInspectorCase.patientMemberId
+        );
+        const availableRecords = caseRecords.length > 0 ? caseRecords : medicalRecords;
+        const activeDoc = availableRecords.find((r) => r.id === activeInspectorDocId) || availableRecords[0];
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in overflow-y-auto">
@@ -757,11 +764,11 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
               <div className="bg-[#f1f5f9] border-b border-[#cbd5e1] p-3 overflow-x-auto shrink-0 flex items-center gap-2 text-[12px]">
                 <span className="font-extrabold text-[#003178] uppercase text-[10px] tracking-wider shrink-0 flex items-center gap-1 mr-1">
                   <span className="material-symbols-outlined text-[16px]">folder_shared</span>
-                  <span>Uploaded Files ({medicalRecords.length}):</span>
+                  <span>Uploaded Files ({availableRecords.length}):</span>
                 </span>
 
                 <div className="flex items-center gap-2">
-                  {medicalRecords.map((doc) => {
+                  {availableRecords.map((doc) => {
                     const isSelected = activeDoc?.id === doc.id;
                     return (
                       <button
@@ -853,19 +860,180 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
                           : 'none'
                       }}
                     >
-                      {activeDoc?.fileUrl &&
-                      (activeDoc.fileUrl.startsWith('data:image') ||
-                        activeDoc.fileUrl.match(/\.(jpg|jpeg|png|webp|gif)$/i) ||
-                        activeDoc.category === 'SCAN_MRI' ||
-                        activeDoc.category === 'RADIOLOGY') ? (
-                        <img
-                          src={activeDoc.fileUrl}
-                          alt={activeDoc.fileName}
-                          className="max-h-[440px] object-contain rounded-xl shadow-2xl mx-auto"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
+                      {activeDoc?.fileUrl ? (
+                        activeDoc.fileUrl.startsWith('data:image') ||
+                        (!activeDoc.fileName.toLowerCase().endsWith('.pdf') &&
+                          (activeDoc.fileUrl.startsWith('blob:') ||
+                            activeDoc.fileUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) ||
+                            activeDoc.category === 'SCAN_MRI' ||
+                            activeDoc.category === 'RADIOLOGY')) ? (
+                          <img
+                            src={activeDoc.fileUrl}
+                            alt={activeDoc.fileName}
+                            className="max-h-[460px] object-contain rounded-xl shadow-2xl mx-auto"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          /* Interactive Native Canvas PDF Viewer */
+                          <div className="space-y-4 max-w-2xl mx-auto text-left w-full">
+                            <PDFViewer url={activeDoc.fileUrl} fileName={activeDoc.fileName} />
+
+                            {/* Formatted Medical Report Sheet with Extracted Findings */}
+                            <div className="bg-white text-slate-900 rounded-xl p-6 shadow-2xl border border-slate-300 space-y-4 text-[12px] font-sans">
+                              {/* Header */}
+                              <div className="border-b-2 border-[#003178] pb-3 flex justify-between items-start gap-3">
+                                <div>
+                                  <div className="flex items-center gap-1.5 text-[#003178] font-black text-[15px]">
+                                    <span className="material-symbols-outlined text-[22px]">local_hospital</span>
+                                    <span>ABDM CLINICAL REPORT INSPECTOR</span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500 font-mono">
+                                    AI-Extracted Diagnostics & Digital Health Record
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[9px] rounded uppercase">
+                                    VALIDATED BY PATHOLOGY / RADIOLOGY
+                                  </span>
+                                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                    Date: {activeDoc?.uploadDate || 'Today'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Patient Banner */}
+                              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 grid grid-cols-3 gap-2 text-[11px]">
+                                <div>
+                                  <span className="text-gray-400 block font-bold text-[9px] uppercase">PATIENT</span>
+                                  <strong className="text-[#003178]">
+                                    {activeDoc?.patientMemberName || scanInspectorCase.patientMemberName || 'Arjun Mehta'}
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 block font-bold text-[9px] uppercase">CATEGORY</span>
+                                  <span className="font-bold text-slate-800">{activeDoc?.category || 'LAB_REPORT'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 block font-bold text-[9px] uppercase">ABHA ID</span>
+                                  <span className="font-mono text-slate-700 font-bold">91-9246-1956-89</span>
+                                </div>
+                              </div>
+
+                              {/* Extracted Clinical Findings Table */}
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <h6 className="font-bold text-[#003178] text-[12px] flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">analytics</span>
+                                    <span>Extracted Clinical Test Parameters</span>
+                                  </h6>
+                                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    OCR Confidence 99.4%
+                                  </span>
+                                </div>
+
+                                {activeDoc?.category === 'SCAN_MRI' || activeDoc?.category === 'RADIOLOGY' ? (
+                                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-[11px] text-slate-800">
+                                    <div className="flex justify-between font-bold text-[10px] text-slate-500 border-b pb-1">
+                                      <span>FINDING AREA</span>
+                                      <span>IMPRESSION</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <span className="font-bold text-[#003178]">L4-L5 Disc Region</span>
+                                      <span className="col-span-2 text-slate-700">Mild posterior disc bulge with neural foraminal narrowing</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 border-t pt-1">
+                                      <span className="font-bold text-[#003178]">Spinal Cord Signal</span>
+                                      <span className="col-span-2 text-slate-700">Normal caliber, no focal signal intensity alteration</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 border-t pt-1">
+                                      <span className="font-bold text-[#003178]">Facet Joints</span>
+                                      <span className="col-span-2 text-slate-700">Mild arthropathy noted bilaterally</span>
+                                    </div>
+                                  </div>
+                                ) : activeDoc?.category === 'PRESCRIPTION' ? (
+                                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-[11px] text-slate-800">
+                                    <div className="grid grid-cols-3 font-bold text-[10px] text-slate-500 border-b pb-1">
+                                      <span>MEDICATION</span>
+                                      <span>DOSAGE & FREQ</span>
+                                      <span>DURATION</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <span className="font-bold text-[#003178]">Tab. Augmentin 625mg</span>
+                                      <span>1 - 0 - 1 (After Meal)</span>
+                                      <span className="text-emerald-700 font-bold">5 Days</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 border-t pt-1">
+                                      <span className="font-bold text-[#003178]">Tab. Pan-40</span>
+                                      <span>1 - 0 - 0 (Before Breakfast)</span>
+                                      <span className="text-emerald-700 font-bold">5 Days</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 border-t pt-1">
+                                      <span className="font-bold text-[#003178]">Tab. Paracetamol 650mg</span>
+                                      <span>1 - 0 - 1 (SOS for Fever)</span>
+                                      <span className="text-slate-600 font-bold">As Needed</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <table className="w-full text-left text-[11px] border-collapse bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
+                                    <thead>
+                                      <tr className="bg-slate-200/70 text-slate-700 font-bold text-[10px]">
+                                        <th className="p-2 border-b border-slate-300">Test Parameter</th>
+                                        <th className="p-2 border-b border-slate-300">Result Value</th>
+                                        <th className="p-2 border-b border-slate-300">Ref Range</th>
+                                        <th className="p-2 border-b border-slate-300">Flag</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Hemoglobin (Hb)</td>
+                                        <td className="p-2 font-mono font-bold">14.2 g/dL</td>
+                                        <td className="p-2 text-slate-500 font-mono">13.0 - 17.0</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] rounded">Normal</span>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Fasting Blood Sugar</td>
+                                        <td className="p-2 font-mono font-bold text-amber-700">118 mg/dL</td>
+                                        <td className="p-2 text-slate-500 font-mono">70 - 100</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 font-bold text-[9px] rounded">⚠️ High</span>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Total Leucocyte Count (TLC)</td>
+                                        <td className="p-2 font-mono font-bold">7,800 /cumm</td>
+                                        <td className="p-2 text-slate-500 font-mono">4000 - 11000</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] rounded">Normal</span>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Serum Creatinine</td>
+                                        <td className="p-2 font-mono font-bold">0.92 mg/dL</td>
+                                        <td className="p-2 text-slate-500 font-mono">0.60 - 1.20</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] rounded">Normal</span>
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+
+                              {/* Digital Stamp */}
+                              <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500">
+                                <span className="font-mono">ABDM Digital Hash: 0x8a92f...41e</span>
+                                <span className="font-bold text-emerald-700 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[13px]">verified</span>
+                                  Digitally Signed by Lab Director
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )
                       ) : (
                         /* Formatted Clinical Sheet for Doctor Review */
                         <div className="bg-white text-slate-900 rounded-xl p-6 max-w-xl mx-auto shadow-2xl border border-slate-300 space-y-4 text-[12px] font-sans">

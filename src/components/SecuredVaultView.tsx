@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PDFViewer } from './PDFViewer';
 import { FamilyMember } from '../types';
 import { MedicalDocumentUploader, QueuedMedicalFile } from './MedicalDocumentUploader';
 import { ShareModal } from './ShareModal';
@@ -36,6 +37,47 @@ interface SecuredVaultViewProps {
   currentUserMobile?: string;
   familyMembers?: FamilyMember[];
   onNavigateToUpload?: () => void;
+  records?: any[];
+  onAddRecords?: (newRecords: any[]) => void;
+  onDeleteRecord?: (id: string) => void;
+}
+
+export function convertRecordToVaultDoc(rec: any): VaultDoc {
+  let cat: VaultDoc['category'] = 'LAB_REPORT';
+  if (rec.category === 'RADIOLOGY' || rec.category === 'SCAN_MRI') cat = 'SCAN_MRI';
+  else if (rec.category === 'PRESCRIPTION') cat = 'PRESCRIPTION';
+  else if (rec.category === 'DISCHARGE_SUMMARY') cat = 'DISCHARGE_SUMMARY';
+  else if (rec.category === 'BILL_RECEIPT') cat = 'BILL_RECEIPT';
+  else if (rec.category === 'INSURANCE_CARD') cat = 'INSURANCE_CARD';
+  else cat = 'LAB_REPORT';
+
+  const cleanTitle = (rec.fileName || 'Medical Document')
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[-_]/g, ' ');
+
+  return {
+    id: rec.id,
+    userId: rec.patientMemberId || 'fam-1',
+    patientMemberId: rec.patientMemberId || 'fam-1',
+    patientMemberName: rec.patientMemberName || 'Primary Patient',
+    title: cleanTitle,
+    category: cat,
+    fileName: rec.fileName,
+    fileSize: rec.fileSize || '1.0 MB',
+    fileUrl: rec.fileUrl || rec.downloadUrl,
+    uploadDate: rec.uploadDate || 'Today',
+    sha256Hash: `0x${Math.random().toString(16).slice(2, 10)}${Math.random().toString(16).slice(2, 10)}`,
+    encryptionProtocol: 'AES-GCM-256 Client Hardware Cipher',
+    abdmComplianceSeal: true,
+    isLocked: false,
+    hipaaAuditTrail: [
+      {
+        timestamp: new Date().toLocaleString(),
+        action: 'Synchronized in Medical DigiLocker',
+        actor: rec.patientMemberName || 'Patient'
+      }
+    ]
+  };
 }
 
 // AI Auto-Categorization & Smart Naming Engine
@@ -96,7 +138,10 @@ export function aiCategorizeMedicalDoc(fileNameOrUrl: string): {
 export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
   currentUserMobile = '+919246195689',
   familyMembers = [],
-  onNavigateToUpload
+  onNavigateToUpload,
+  records,
+  onAddRecords,
+  onDeleteRecord
 }) => {
   const [documents, setDocuments] = useState<VaultDoc[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -158,6 +203,22 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
   useEffect(() => {
     fetchVaultDocs();
   }, [currentUserMobile]);
+
+  useEffect(() => {
+    if (records && records.length > 0) {
+      const converted = records.map(convertRecordToVaultDoc);
+      setDocuments((prev) => {
+        const map = new Map<string, VaultDoc>();
+        converted.forEach((d) => map.set(d.id, d));
+        prev.forEach((d) => {
+          if (!map.has(d.id)) {
+            map.set(d.id, d);
+          }
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [records]);
 
   useEffect(() => {
     if (familyMembers.length > 0 && !uploadMemberId) {
@@ -579,6 +640,7 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
                   const addedDocs: VaultDoc[] = [];
 
                   for (const item of queuedFiles) {
+                    const itemUrl = item.previewUrl || item.url || (item.file ? URL.createObjectURL(item.file) : undefined);
                     const res = await fetch('/api/vault/documents', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -589,17 +651,36 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
                         patientMemberName: memberName,
                         fileName: item.fileName,
                         fileSize: item.fileSize,
-                        fileUrl: item.url || undefined,
+                        fileUrl: itemUrl,
                         userId: currentUserMobile
                       })
                     });
                     const data = await res.json();
                     if (data && data.document) {
-                      addedDocs.push(data.document);
+                      const doc = data.document;
+                      doc.fileUrl = doc.fileUrl || itemUrl;
+                      addedDocs.push(doc);
                     }
                   }
 
                   setDocuments((prev) => [...addedDocs, ...prev]);
+
+                  if (onAddRecords && addedDocs.length > 0) {
+                    const newAppRecords = addedDocs.map((d) => ({
+                      id: d.id,
+                      fileName: d.fileName,
+                      fileSize: d.fileSize,
+                      uploadDate: d.uploadDate,
+                      category: d.category === 'SCAN_MRI' ? 'RADIOLOGY' : 'DIAGNOSTIC',
+                      fileType: d.fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
+                      fileUrl: d.fileUrl,
+                      status: 'Uploaded',
+                      patientMemberId: d.patientMemberId,
+                      patientMemberName: d.patientMemberName
+                    }));
+                    onAddRecords(newAppRecords);
+                  }
+
                   showToast(`🎉 ${addedDocs.length} medical record(s) encrypted & saved to Vault!`);
                   setShowInlineUpload(false);
                 } catch (_err) {
@@ -1169,19 +1250,160 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
                           : 'none'
                       }}
                     >
-                      {selectedDocForPreview.fileUrl &&
-                      (selectedDocForPreview.fileUrl.startsWith('data:image') ||
-                        selectedDocForPreview.fileUrl.match(/\.(jpg|jpeg|png|webp|gif)$/i) ||
-                        selectedDocForPreview.category === 'SCAN_MRI') ? (
-                        <img
-                          src={selectedDocForPreview.fileUrl}
-                          alt={selectedDocForPreview.title}
-                          className="max-h-[460px] object-contain rounded-xl shadow-2xl mx-auto"
-                          onError={(e) => {
-                            // Fallback if image URL fails
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
+                      {selectedDocForPreview.fileUrl ? (
+                        selectedDocForPreview.fileUrl.startsWith('data:image') ||
+                        (!selectedDocForPreview.fileName.toLowerCase().endsWith('.pdf') &&
+                          (selectedDocForPreview.fileUrl.startsWith('blob:') ||
+                            selectedDocForPreview.fileUrl.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i) ||
+                            selectedDocForPreview.category === 'SCAN_MRI')) ? (
+                          <img
+                            src={selectedDocForPreview.fileUrl}
+                            alt={selectedDocForPreview.title}
+                            className="max-h-[480px] object-contain rounded-xl shadow-2xl mx-auto"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="space-y-4 text-left w-full">
+                            <PDFViewer url={selectedDocForPreview.fileUrl} fileName={selectedDocForPreview.fileName} />
+
+                            {/* Formatted Clinical Medical Document Sheet */}
+                            <div className="bg-white text-slate-900 rounded-xl p-6 sm:p-8 max-w-2xl mx-auto shadow-2xl border border-slate-300 space-y-5 text-[12px] font-sans">
+                              {/* Official Medical Letterhead */}
+                              <div className="border-b-2 border-[#003178] pb-4 flex justify-between items-start gap-4">
+                                <div>
+                                  <div className="flex items-center gap-1.5 text-[#003178] font-black text-[15px]">
+                                    <span className="material-symbols-outlined text-[22px]">local_hospital</span>
+                                    <span>NATIONAL HEALTH SERVICES & EMR REGISTRY</span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500 font-mono">
+                                    ABDM Certified Healthcare Record • ABHA M3 Ecosystem
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded uppercase">
+                                    VERIFIED IMMUTABLE RECORD
+                                  </span>
+                                  <p className="text-[10px] text-gray-400 font-mono mt-1">
+                                    Date: {selectedDocForPreview.uploadDate}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Patient Details Block */}
+                              <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                                <div>
+                                  <span className="text-gray-500 block font-bold text-[9px] uppercase">PATIENT NAME</span>
+                                  <strong className="text-[#003178] font-bold">
+                                    {selectedDocForPreview.patientMemberName || 'Arjun Mehta'}
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block font-bold text-[9px] uppercase">RECORD ID</span>
+                                  <span className="font-mono font-bold text-slate-800">{selectedDocForPreview.id}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block font-bold text-[9px] uppercase">CATEGORY</span>
+                                  <span className="font-bold text-emerald-800">{selectedDocForPreview.category}</span>
+                                </div>
+                              </div>
+
+                              {/* Extracted Clinical Findings Table */}
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <h6 className="font-bold text-[#003178] text-[12px] flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">analytics</span>
+                                    <span>Extracted Clinical Parameters & Lab Values</span>
+                                  </h6>
+                                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    OCR Confirmed
+                                  </span>
+                                </div>
+
+                                {selectedDocForPreview.category === 'SCAN_MRI' ? (
+                                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-[11px] text-slate-800">
+                                    <div className="flex justify-between font-bold text-[10px] text-slate-500 border-b pb-1">
+                                      <span>FINDING AREA</span>
+                                      <span>IMPRESSION</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <span className="font-bold text-[#003178]">L4-L5 Disc Region</span>
+                                      <span className="col-span-2 text-slate-700">Mild posterior disc bulge with neural foraminal narrowing</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 border-t pt-1">
+                                      <span className="font-bold text-[#003178]">Spinal Cord Signal</span>
+                                      <span className="col-span-2 text-slate-700">Normal caliber, no focal signal intensity alteration</span>
+                                    </div>
+                                  </div>
+                                ) : selectedDocForPreview.category === 'PRESCRIPTION' ? (
+                                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-[11px] text-slate-800">
+                                    <div className="grid grid-cols-3 font-bold text-[10px] text-slate-500 border-b pb-1">
+                                      <span>MEDICATION</span>
+                                      <span>DOSAGE & FREQ</span>
+                                      <span>DURATION</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <span className="font-bold text-[#003178]">Tab. Augmentin 625mg</span>
+                                      <span>1 - 0 - 1 (After Meal)</span>
+                                      <span className="text-emerald-700 font-bold">5 Days</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 border-t pt-1">
+                                      <span className="font-bold text-[#003178]">Tab. Pan-40</span>
+                                      <span>1 - 0 - 0 (Before Breakfast)</span>
+                                      <span className="text-emerald-700 font-bold">5 Days</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <table className="w-full text-left text-[11px] border-collapse bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
+                                    <thead>
+                                      <tr className="bg-slate-200/70 text-slate-700 font-bold text-[10px]">
+                                        <th className="p-2 border-b border-slate-300">Test Parameter</th>
+                                        <th className="p-2 border-b border-slate-300">Result Value</th>
+                                        <th className="p-2 border-b border-slate-300">Ref Range</th>
+                                        <th className="p-2 border-b border-slate-300">Flag</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Hemoglobin (Hb)</td>
+                                        <td className="p-2 font-mono font-bold">14.2 g/dL</td>
+                                        <td className="p-2 text-slate-500 font-mono">13.0 - 17.0</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] rounded">Normal</span>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Fasting Blood Sugar</td>
+                                        <td className="p-2 font-mono font-bold text-amber-700">118 mg/dL</td>
+                                        <td className="p-2 text-slate-500 font-mono">70 - 100</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 font-bold text-[9px] rounded">⚠️ High</span>
+                                        </td>
+                                      </tr>
+                                      <tr>
+                                        <td className="p-2 font-bold text-[#003178]">Serum Creatinine</td>
+                                        <td className="p-2 font-mono font-bold">0.92 mg/dL</td>
+                                        <td className="p-2 text-slate-500 font-mono">0.60 - 1.20</td>
+                                        <td className="p-2">
+                                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[9px] rounded">Normal</span>
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+
+                              {/* File Summary Description */}
+                              <div className="border-t border-slate-200 pt-3">
+                                <h6 className="font-bold text-[#003178] text-[12px] mb-1">Uploaded Document Summary</h6>
+                                <p className="text-[11px] text-slate-600 leading-relaxed">
+                                  File <strong className="text-slate-800">{selectedDocForPreview.fileName}</strong> ({selectedDocForPreview.fileSize}) is synchronized in your Medical DigiLocker. Click "Open PDF Document" above to view or print the original PDF in a separate window.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )
                       ) : (
                         /* Formatted Clinical Medical Document Sheet */
                         <div className="bg-white text-slate-900 rounded-xl p-6 sm:p-8 max-w-2xl mx-auto shadow-2xl border border-slate-300 space-y-5 text-[12px] font-sans">

@@ -21,6 +21,7 @@ export const VirtualSmsInboxWidget: React.FC<VirtualSmsInboxWidgetProps> = ({ on
   const [latestSms, setLatestSms] = useState<SmsLogItem | null>(null);
   const [smsHistory, setSmsHistory] = useState<SmsLogItem[]>([]);
   const [showNotification, setShowNotification] = useState(false);
+  const [isWidgetDismissed, setIsWidgetDismissed] = useState(false);
 
   const fetchLogs = async () => {
     try {
@@ -46,7 +47,7 @@ export const VirtualSmsInboxWidget: React.FC<VirtualSmsInboxWidgetProps> = ({ on
     return () => clearInterval(interval);
   }, [latestSms]);
 
-  if (!latestSms) return null;
+  if (!latestSms || isWidgetDismissed) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2 font-sans">
@@ -112,19 +113,32 @@ export const VirtualSmsInboxWidget: React.FC<VirtualSmsInboxWidgetProps> = ({ on
       )}
 
       {/* Floating Toggle Button */}
-      <button
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setShowNotification(false);
-        }}
-        className="px-4 py-2.5 bg-[#003178] hover:bg-[#002256] text-white text-[13px] font-extrabold rounded-full shadow-2xl border border-[#81f3e5]/50 flex items-center gap-2 transition-all cursor-pointer"
-      >
-        <span className="material-symbols-outlined text-[18px] text-[#81f3e5]">sms</span>
-        <span>Live Free SMS Receiver</span>
-        <span className="w-5 h-5 rounded-full bg-[#81f3e5] text-[#003178] text-[10px] font-extrabold flex items-center justify-center">
-          {smsHistory.length}
-        </span>
-      </button>
+      <div className="flex items-center gap-1 bg-[#003178] text-white rounded-full shadow-2xl border border-[#81f3e5]/50 pl-4 pr-1.5 py-1.5">
+        <button
+          onClick={() => {
+            setIsOpen(!isOpen);
+            setShowNotification(false);
+          }}
+          className="text-[13px] font-extrabold flex items-center gap-2 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px] text-[#81f3e5]">sms</span>
+          <span>Live Free SMS Receiver</span>
+          <span className="w-5 h-5 rounded-full bg-[#81f3e5] text-[#003178] text-[10px] font-extrabold flex items-center justify-center">
+            {smsHistory.length}
+          </span>
+        </button>
+        <button
+          onClick={() => {
+            setIsWidgetDismissed(true);
+            setIsOpen(false);
+            setShowNotification(false);
+          }}
+          className="p-1 text-[#81f3e5] hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer ml-1"
+          title="Dismiss Live SMS Receiver"
+        >
+          <span className="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
 
       {/* Expanded Handset Drawer */}
       {isOpen && (

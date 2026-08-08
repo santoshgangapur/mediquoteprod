@@ -190,6 +190,12 @@ export const App: React.FC = () => {
     );
   };
 
+  const handleLogout = () => {
+    setAuthUser(null);
+    setCurrentView('landing');
+    setIsMobileAuthModalOpen(true);
+  };
+
   // Filter records and cases strictly by activeFamilyMemberId and searchQuery
   const memberRecords = records.filter((r) => r.patientMemberId === activeFamilyMemberId);
   const filteredRecords = memberRecords.filter((r) =>
@@ -209,7 +215,7 @@ export const App: React.FC = () => {
         onStartNewCase={() => handleNavigate('new-case')}
         authUser={authUser}
         onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
-        onLogout={() => setAuthUser(null)}
+        onLogout={handleLogout}
       />
 
       {/* Top Header */}
@@ -225,7 +231,7 @@ export const App: React.FC = () => {
         onUpdatePatientProfile={handleUpdatePatientProfile}
         authUser={authUser}
         onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
-        onLogout={() => setAuthUser(null)}
+        onLogout={handleLogout}
       />
 
       {/* Main View Area */}
@@ -364,6 +370,9 @@ export const App: React.FC = () => {
               currentUserMobile={authUser?.mobileNumber || '+919246195689'}
               familyMembers={familyMembers}
               onNavigateToUpload={() => handleNavigate('upload')}
+              records={records}
+              onAddRecords={handleAddRecords}
+              onDeleteRecord={handleDeleteRecord}
             />
           </div>
         )}
