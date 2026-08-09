@@ -8,7 +8,33 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   return (
     <footer className="bg-[#001d4a] text-white pt-12 pb-8 px-4 md:px-8 mt-16 border-t-4 border-[#81f3e5] selection:bg-[#81f3e5] selection:text-[#00201d]">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+      <div className="max-w-7xl mx-auto">
+        {/* Mobile Quick Action Strip for Medical Tourism */}
+        <div className="lg:hidden mb-8 p-3.5 bg-[#00285e] border border-[#1a4a8c] rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/30">
+              <span className="material-symbols-outlined text-[22px]">flight_takeoff</span>
+            </div>
+            <div>
+              <h4 className="text-[13px] font-extrabold text-white leading-snug flex items-center gap-1.5">
+                <span>Medical Tourism India Hub</span>
+                <span className="px-1.5 py-0.5 bg-amber-400 text-[#001d4a] text-[9px] font-black rounded font-mono-data uppercase">
+                  Global
+                </span>
+              </h4>
+              <p className="text-[11px] text-[#90b3e0]">Cross-border clinical concierge & transparent cost estimates</p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('medical-tourism')}
+            className="px-3 py-2 bg-[#81f3e5] text-[#001d4a] font-extrabold text-[12px] rounded-xl flex items-center gap-1 shrink-0 hover:bg-white active:scale-95 transition-all cursor-pointer shadow-md"
+          >
+            <span>Explore</span>
+            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
         {/* Col 1: Brand & ABDM Info */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('landing')}>
@@ -159,26 +185,36 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
       {/* Divider */}
       <div className="border-t border-[#1a4a8c] pt-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] text-[#8faecf]">
-        <p>© {new Date().getFullYear()} MediQuote AI Technologies Pvt. Ltd. All Rights Reserved.</p>
+        <button
+          onClick={() => onNavigate('copyright')}
+          className="hover:text-white transition-colors cursor-pointer text-left"
+        >
+          © {new Date().getFullYear()} MediQuote AI Technologies Pvt. Ltd. All Rights Reserved.
+        </button>
 
         <div className="flex items-center gap-4 flex-wrap justify-center font-medium">
-          <button onClick={() => alert('Privacy Policy: All patient medical records and personal data are encrypted under the Digital Personal Data Protection (DPDP) Act 2023.')} className="hover:text-white transition-colors cursor-pointer">
+          <button onClick={() => onNavigate('privacy')} className="hover:text-white transition-colors cursor-pointer">
             Privacy Policy
           </button>
           <span>•</span>
-          <button onClick={() => alert('Terms of Service: MediQuote AI provides surgical procurement assistance and cost comparisons. Medical decisions should be made in consultation with certified doctors.')} className="hover:text-white transition-colors cursor-pointer">
+          <button onClick={() => onNavigate('terms')} className="hover:text-white transition-colors cursor-pointer">
             Terms of Service
           </button>
           <span>•</span>
-          <button onClick={() => alert('Medical Disclaimer: Quotations are indicative and based on hospital tariffs. Final billing is finalized upon clinical diagnosis.')} className="hover:text-white transition-colors cursor-pointer">
+          <button onClick={() => onNavigate('disclaimer')} className="hover:text-white transition-colors cursor-pointer">
             Clinical Disclaimer
           </button>
           <span>•</span>
-          <button onClick={() => alert('ABDM Integration: Connect your ABHA ID to sync records seamlessly across Indian health providers.')} className="hover:text-[#81f3e5] transition-colors cursor-pointer text-[#81f3e5]">
+          <button onClick={() => onNavigate('abha-guide')} className="hover:text-[#81f3e5] transition-colors cursor-pointer text-[#81f3e5] font-bold">
             ABHA Sync Guide
+          </button>
+          <span>•</span>
+          <button onClick={() => onNavigate('copyright')} className="hover:text-white transition-colors cursor-pointer">
+            Copyright & IP
           </button>
         </div>
       </div>
-    </footer>
+    </div>
+  </footer>
   );
 };

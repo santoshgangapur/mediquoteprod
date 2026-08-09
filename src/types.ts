@@ -1,4 +1,4 @@
-export type ViewMode = 'landing' | 'dashboard' | 'cases' | 'family' | 'upload' | 'quotes' | 'checkout' | 'recommendations' | 'records' | 'account' | 'hospitals' | 'hospital-profile' | 'new-case' | 'doctor-portal' | 'admin' | 'medical-tourism';
+export type ViewMode = 'landing' | 'dashboard' | 'cases' | 'family' | 'upload' | 'quotes' | 'checkout' | 'recommendations' | 'records' | 'account' | 'hospitals' | 'hospital-profile' | 'new-case' | 'doctor-portal' | 'admin' | 'medical-tourism' | 'privacy' | 'terms' | 'disclaimer' | 'abha-guide' | 'copyright' | 'legal';
 
 export type PersonaRole = 'patient' | 'hospital' | 'insurance' | 'doctor';
 

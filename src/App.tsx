@@ -32,6 +32,7 @@ import { AdminView } from './components/AdminView';
 import { LandingView } from './components/LandingView';
 import { MedicalTourismView } from './components/MedicalTourismView';
 import { SecuredVaultView } from './components/SecuredVaultView';
+import { LegalLandingPagesView } from './components/LegalLandingPagesView';
 
 import { NewCaseModal } from './components/NewCaseModal';
 import { QuoteDetailsModal } from './components/QuoteDetailsModal';
@@ -417,6 +418,13 @@ export const App: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {['privacy', 'terms', 'disclaimer', 'abha-guide', 'copyright', 'legal'].includes(currentView) && (
+          <LegalLandingPagesView
+            initialTab={currentView as any}
+            onNavigate={handleNavigate}
+          />
         )}
       </main>
 

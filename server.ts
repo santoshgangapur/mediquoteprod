@@ -10,6 +10,17 @@ async function startServer() {
 
   app.use(express.json({ limit: "20mb" }));
 
+  // Global CORS Middleware (Required for PWABuilder, Google Play TWA verification, and cross-origin PWA fetches)
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // Initialize Gemini AI Client (Server-side only)
   let ai: GoogleGenAI | null = null;
   if (process.env.GEMINI_API_KEY) {
@@ -1412,6 +1423,18 @@ Return strictly JSON format:
       });
     }
   });
+
+  // Explicitly serve manifest.json with official PWA content-type and CORS headers
+  app.get("/manifest.json", (req, res) => {
+    const manifestPath = path.join(process.cwd(), "public", "manifest.json");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.sendFile(manifestPath);
+  });
+
+  // Serve public static assets (manifest.json, screenshots, icons, assetlinks.json)
+  const publicPath = path.join(process.cwd(), "public");
+  app.use(express.static(publicPath));
 
   // Vite middleware or Production Static File Serving
   const distIndexPath = path.join(process.cwd(), "dist", "index.html");

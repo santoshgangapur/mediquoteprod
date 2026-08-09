@@ -236,15 +236,16 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       {/* Right Controls */}
       <div className="flex items-center gap-2 md:gap-3">
 
-        {/* Android / Play Store App Button */}
+        {/* Android / Play Store App Button - Icon Only */}
         <button
           type="button"
           onClick={() => setIsPlayStoreModalOpen(true)}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#81f3e5] hover:bg-[#60ebd8] text-[#006f66] font-extrabold text-[12px] rounded-full transition-all shadow-sm cursor-pointer"
-          title="Install App or Deploy to Google Play Store"
+          className="flex items-center justify-center px-3.5 py-1.5 bg-[#70f3e0] hover:bg-[#50ebd6] text-[#00382f] rounded-full transition-all shadow-xs cursor-pointer border border-[#4be0cc]/60 active:scale-95"
+          title={authUser?.role === 'admin' ? "Play Console & Android Deployment Studio" : "Install MediQuote AI Mobile App"}
         >
-          <span className="material-symbols-outlined text-[18px]">android</span>
-          <span className="hidden xl:inline">Install / Play Store</span>
+          <span className="material-symbols-outlined text-[22px] text-[#00382f] leading-none">
+            android
+          </span>
         </button>
 
         {/* Hospitals Quick Access Button */}
@@ -258,8 +259,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <span>Hospitals</span>
         </button>
 
-        {/* Search Icon Popover Dropdown (Just like Profile Dropdown) */}
-        <div className="relative" ref={searchContainerRef}>
+        {/* Search Icon Popover Dropdown (Desktop Only) */}
+        <div className="hidden sm:block relative" ref={searchContainerRef}>
           <button
             type="button"
             onClick={() => {
@@ -700,8 +701,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
         </div>
 
-        {/* Notifications */}
-        <div className="relative">
+        {/* Notifications (Desktop Only) */}
+        <div className="hidden sm:block relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="relative p-2 rounded-full text-[#434652] hover:text-[#003178] hover:bg-[#cfe6f2] transition-colors cursor-pointer"
@@ -739,15 +740,16 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           )}
         </div>
 
-        {/* User Profile Dropdown Control */}
+        {/* User Profile Dropdown Control - Displays ONLY User Profile Icon on Mobile */}
         {authUser ? (
           <div className="relative" ref={profileDropdownRef}>
             <button
               type="button"
               onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-              className="flex items-center gap-2.5 bg-white border border-[#c3c6d4] hover:border-[#003178] pl-3.5 pr-2 py-1.5 rounded-full shadow-xs cursor-pointer transition-all"
+              className="flex items-center gap-2 bg-white border border-[#c3c6d4] hover:border-[#003178] p-1 sm:pl-3.5 sm:pr-2 sm:py-1.5 rounded-full shadow-xs cursor-pointer transition-all"
+              title="User Profile Menu"
             >
-              <div className="flex flex-col text-right leading-tight min-w-0">
+              <div className="hidden sm:flex flex-col text-right leading-tight min-w-0">
                 <span className="text-[13px] font-extrabold text-[#003178] truncate max-w-[150px]">
                   {authUser.name
                     ? authUser.name.includes('(+91')
@@ -764,7 +766,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 <span className="material-symbols-outlined text-[18px]">person</span>
               </div>
 
-              <span className="material-symbols-outlined text-[18px] text-[#737783]">
+              <span className="hidden sm:inline-block material-symbols-outlined text-[18px] text-[#737783]">
                 {isProfileDropdownOpen ? 'expand_less' : 'expand_more'}
               </span>
             </button>
@@ -856,10 +858,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         ) : (
           <button
             onClick={onOpenAuthModal}
-            className="px-4 py-2 bg-[#003178] hover:bg-[#002256] text-white font-extrabold text-[13px] rounded-full transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+            className="p-2 sm:px-4 sm:py-2 bg-[#003178] hover:bg-[#002256] text-white font-extrabold text-[13px] rounded-full transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+            title="User Profile / Sign In"
           >
-            <span className="material-symbols-outlined text-[18px]">smartphone</span>
-            <span>Sign In with Mobile</span>
+            <span className="material-symbols-outlined text-[20px]">account_circle</span>
+            <span className="hidden sm:inline">Sign In with Mobile</span>
           </button>
         )}
       </div>
@@ -867,6 +870,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       <PlayStoreExportModal
         isOpen={isPlayStoreModalOpen}
         onClose={() => setIsPlayStoreModalOpen(false)}
+        authUser={authUser}
       />
     </header>
   );

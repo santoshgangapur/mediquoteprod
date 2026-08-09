@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AdminUser, AdminHospital, ViewMode, MedicalRecord } from '../types';
 import { SmsGatewayManagerModal } from './SmsGatewayManagerModal';
+import { PlayStoreExportModal } from './PlayStoreExportModal';
 import { initialMedicalRecords } from '../data/mockData';
 
 interface AdminViewProps {
@@ -28,6 +29,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'hospitals' | 'metrics'>('users');
   const [isSmsManagerOpen, setIsSmsManagerOpen] = useState(false);
+  const [isPlayStoreModalOpen, setIsPlayStoreModalOpen] = useState(false);
 
   // Check if current authenticated user is super admin
   const isAdmin = authUser?.role === 'admin' || authUser?.mobileNumber === '+919246195689';
@@ -295,8 +297,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => setIsPlayStoreModalOpen(true)}
+              className="px-3.5 py-2 rounded-full text-[13px] font-extrabold bg-[#70f3e0] hover:bg-[#50ebd6] text-[#00382f] shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-[#4be0cc]/60"
+              title="Google Play Store & Android Package Management Studio"
+            >
+              <span className="material-symbols-outlined text-[20px] text-[#00382f]">android</span>
+              <span>Play Store & Android Desk</span>
+            </button>
+
+            <button
               onClick={() => setIsSmsManagerOpen(true)}
-              className="px-3.5 py-2 rounded-xl text-[13px] font-bold bg-[#81f3e5] hover:bg-white text-[#003178] shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl text-[13px] font-bold bg-[#003178] hover:bg-[#002256] text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">sms</span>
               <span>SMS Gateway Config</span>
@@ -978,6 +989,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
       <SmsGatewayManagerModal
         isOpen={isSmsManagerOpen}
         onClose={() => setIsSmsManagerOpen(false)}
+      />
+
+      {/* Play Store & Android Deployment Studio Modal */}
+      <PlayStoreExportModal
+        isOpen={isPlayStoreModalOpen}
+        onClose={() => setIsPlayStoreModalOpen(false)}
+        authUser={authUser}
       />
     </div>
   );
