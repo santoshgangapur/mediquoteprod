@@ -37,7 +37,18 @@ export const SmsGatewayManagerModal: React.FC<SmsGatewayManagerModalProps> = ({ 
       fetchConfig();
       fetchLogs();
     }
-  }, [isOpen]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   const fetchConfig = async () => {
     try {
@@ -128,8 +139,14 @@ export const SmsGatewayManagerModal: React.FC<SmsGatewayManagerModalProps> = ({ 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="bg-white max-w-2xl w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-4 flex justify-center items-start sm:items-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white max-w-2xl w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto cursor-default"
+      >
         {/* Header */}
         <div className="bg-[#003178] text-white p-6 relative shrink-0">
           <button

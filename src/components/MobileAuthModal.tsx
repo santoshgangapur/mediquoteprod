@@ -40,7 +40,18 @@ export const MobileAuthModal: React.FC<MobileAuthModalProps> = ({
       setErrorMsg('');
       setGoogleGmailId('');
     }
-  }, [isOpen]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     let interval: any = null;
@@ -263,8 +274,14 @@ export const MobileAuthModal: React.FC<MobileAuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-white max-w-lg w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 flex justify-center items-start sm:items-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white max-w-lg w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden relative my-auto max-h-[92vh] flex flex-col cursor-default"
+      >
         {/* Top Accent Header */}
         <div className="bg-[#003178] text-white p-6 relative shrink-0">
           <button

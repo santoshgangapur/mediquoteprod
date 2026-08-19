@@ -40,6 +40,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     return () => clearInterval(interval);
   }, [isOpen, passRevoked]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Format seconds into HH:MM:SS
@@ -109,8 +123,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-150 overflow-y-auto">
-      <div className="bg-white rounded-3xl border-2 border-[#003178]/30 max-w-lg w-full p-6 shadow-2xl space-y-5 my-8 relative">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-4 flex justify-center items-start sm:items-center bg-black/70 backdrop-blur-md animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl border-2 border-[#003178]/30 max-w-lg w-full p-6 shadow-2xl space-y-5 my-auto relative cursor-default"
+      >
         {/* Header */}
         <div className="flex justify-between items-start border-b border-[#c3c6d4]/60 pb-4">
           <div className="flex items-center gap-3">

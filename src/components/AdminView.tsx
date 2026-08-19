@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminUser, AdminHospital, ViewMode, MedicalRecord, AuthUser } from '../types';
 import { SmsGatewayManagerModal } from './SmsGatewayManagerModal';
 import { PlayStoreExportModal } from './PlayStoreExportModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { initialMedicalRecords } from '../data/mockData';
+import { saveUserToCloud, deleteUserFromCloud, fetchUsersFromCloud } from '../lib/dbService';
 
 interface AdminViewProps {
   users: AdminUser[];
@@ -12,6 +13,7 @@ interface AdminViewProps {
   onUpdateUsers: (users: AdminUser[]) => void;
   onUpdateHospitals: (hospitals: AdminHospital[]) => void;
   onUpdateRecords?: (records: MedicalRecord[]) => void;
+  onRefreshUsers?: () => void;
   onNavigate: (view: ViewMode) => void;
   authUser?: AuthUser | null;
   onOpenAuthModal?: () => void;
@@ -24,6 +26,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   onUpdateUsers,
   onUpdateHospitals,
   onUpdateRecords,
+  onRefreshUsers,
   onNavigate,
   authUser,
   onOpenAuthModal,
@@ -31,6 +34,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [activeTab, setActiveTab] = useState<'users' | 'hospitals' | 'metrics'>('users');
   const [isSmsManagerOpen, setIsSmsManagerOpen] = useState(false);
   const [isPlayStoreModalOpen, setIsPlayStoreModalOpen] = useState(false);
+  const [isRefreshingUsers, setIsRefreshingUsers] = useState(false);
 
   // In-app Delete Confirmation Modal State
   const [deleteModalConfig, setDeleteModalConfig] = useState<{
@@ -41,9 +45,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     message: string;
     onConfirm: () => void;
   } | null>(null);
-
-  // Check if current authenticated user is admin
-  const isAdmin = authUser?.role === 'admin' || authUser?.email === 'santoshgangapur@gmail.com';
 
   // Toast / Status state
   const [managingReportsUser, setManagingReportsUser] = useState<AdminUser | null>(null);
@@ -76,6 +77,48 @@ export const AdminView: React.FC<AdminViewProps> = ({
   // Edit Hospital State
   const [editingHospital, setEditingHospital] = useState<AdminHospital | null>(null);
 
+  // Check if current authenticated user is admin
+  const isAdmin = authUser?.role === 'admin' || authUser?.email === 'santoshgangapur@gmail.com';
+
+  const handleManualRefresh = async () => {
+    setIsRefreshingUsers(true);
+    try {
+      if (onRefreshUsers) {
+        onRefreshUsers();
+      }
+      const cloudUsers = await fetchUsersFromCloud();
+      if (cloudUsers && cloudUsers.length > 0) {
+        onUpdateUsers(cloudUsers);
+      }
+    } catch (_err) {
+      console.warn('Could not refresh users:', _err);
+    } finally {
+      setTimeout(() => setIsRefreshingUsers(false), 600);
+    }
+  };
+
+  // Auto-refresh users when switching to users tab or when Admin mounts
+  useEffect(() => {
+    handleManualRefresh();
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAddUserModalOpen) setIsAddUserModalOpen(false);
+        if (isAddHospitalModalOpen) setIsAddHospitalModalOpen(false);
+        if (editingUser) setEditingUser(null);
+        if (editingHospital) setEditingHospital(null);
+        if (managingReportsUser) setManagingReportsUser(null);
+        if (deleteModalConfig) setDeleteModalConfig(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAddUserModalOpen, isAddHospitalModalOpen, editingUser, editingHospital, managingReportsUser, deleteModalConfig]);
+
   // HELPER: GET USER REPORTS
   const getUserReports = (userName: string, userId: string) => {
     return medicalRecords.filter(
@@ -86,16 +129,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   // USER ACTIONS
-  const handleToggleBlockUser = (userId: string) => {
-    onUpdateUsers(
-      users.map((u) => {
-        if (u.id === userId) {
-          const nextStatus = u.status === 'Blocked' ? 'Active' : 'Blocked';
-          return { ...u, status: nextStatus };
-        }
-        return u;
-      })
-    );
+  const handleToggleBlockUser = async (userId: string) => {
+    const updatedUsers: AdminUser[] = users.map((u) => {
+      if (u.id === userId) {
+        const nextStatus: 'Active' | 'Blocked' = u.status === 'Blocked' ? 'Active' : 'Blocked';
+        const updated: AdminUser = { ...u, status: nextStatus };
+        saveUserToCloud(updated);
+        return updated;
+      }
+      return u;
+    });
+    onUpdateUsers(updatedUsers);
   };
 
   const handleDeleteUser = (userId: string) => {
@@ -112,9 +156,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
         reportsCount > 0
           ? `Are you sure you want to permanently delete user "${targetUser.name}"? This will also remove their ${reportsCount} uploaded medical report(s).`
           : `Are you sure you want to permanently delete user "${targetUser.name}"? This action cannot be undone.`,
-      onConfirm: () => {
-        // 1. Delete user from admin users list
+      onConfirm: async () => {
+        // 1. Delete user from admin users list and Cloud Firestore
         onUpdateUsers(users.filter((u) => u.id !== userId));
+        await deleteUserFromCloud(userId);
 
         // 2. Delete user's medical reports if callback available
         if (onUpdateRecords && reportsCount > 0) {
@@ -173,14 +218,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
     });
   };
 
-  const handleSaveAddUser = (e: React.FormEvent) => {
+  const handleSaveAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
 
     const createdUser: AdminUser = {
       id: `usr-${Date.now()}`,
-      name: newUserName,
-      email: newUserEmail,
+      name: newUserName.trim(),
+      email: newUserEmail.trim().toLowerCase(),
       role: newUserRole,
       status: 'Active',
       joinedDate: 'Just now',
@@ -188,16 +233,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
     };
 
     onUpdateUsers([createdUser, ...users]);
+    await saveUserToCloud(createdUser);
     setNewUserName('');
     setNewUserEmail('');
     setIsAddUserModalOpen(false);
   };
 
-  const handleSaveEditUser = (e: React.FormEvent) => {
+  const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
 
     onUpdateUsers(users.map((u) => (u.id === editingUser.id ? editingUser : u)));
+    await saveUserToCloud(editingUser);
     setEditingUser(null);
   };
 
@@ -259,11 +306,39 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   // Filtered lists
   const filteredUsers = users.filter((u) => {
+    const q = userSearch.toLowerCase().trim();
     const matchesQuery =
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase());
-    const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
-    const matchesStatus = userStatusFilter === 'ALL' || u.status === userStatusFilter;
+      !q ||
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.role && u.role.toLowerCase().includes(q)) ||
+      (u.city && u.city.toLowerCase().includes(q)) ||
+      ((u as any).mobileNumber && (u as any).mobileNumber.includes(q));
+
+    let matchesRole = userRoleFilter === 'ALL';
+    if (!matchesRole) {
+      const uRole = (u.role || '').toLowerCase();
+      const fRole = userRoleFilter.toLowerCase();
+      if (fRole === 'system admin' || fRole === 'admins' || fRole === 'admin') {
+        matchesRole = uRole.includes('admin');
+      } else if (fRole === 'patient') {
+        matchesRole = uRole.includes('patient');
+      } else if (fRole === 'doctor') {
+        matchesRole = uRole.includes('doctor');
+      } else if (fRole === 'hospital coordinator' || fRole === 'coordinator') {
+        matchesRole = uRole.includes('hospital') || uRole.includes('coord');
+      } else {
+        matchesRole = uRole === fRole;
+      }
+    }
+
+    let matchesStatus = userStatusFilter === 'ALL';
+    if (!matchesStatus) {
+      const uStatus = (u.status || '').toLowerCase();
+      const fStatus = userStatusFilter.toLowerCase();
+      matchesStatus = uStatus.includes(fStatus);
+    }
+
     return matchesQuery && matchesRole && matchesStatus;
   });
 
@@ -461,6 +536,19 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               <button
+                type="button"
+                onClick={handleManualRefresh}
+                disabled={isRefreshingUsers}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-[13px] transition-all border border-slate-300 cursor-pointer disabled:opacity-50"
+                title="Fetch latest user sign-ups and updates from Cloud Firestore and Database"
+              >
+                <span className={`material-symbols-outlined text-[18px] ${isRefreshingUsers ? 'animate-spin text-blue-600' : ''}`}>
+                  sync
+                </span>
+                <span>{isRefreshingUsers ? 'Syncing...' : 'Sync Directory'}</span>
+              </button>
+
+              <button
                 onClick={() => setIsAddUserModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-[#003178] text-white font-bold rounded-xl text-[13px] hover:bg-[#0d47a1] transition-all shadow-sm shrink-0 cursor-pointer"
               >
@@ -479,7 +567,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <th className="p-4">User Details</th>
                     <th className="p-4">Role</th>
                     <th className="p-4">Status</th>
-                    <th className="p-4">Assigned Unit</th>
+                    <th className="p-4">Location / Unit</th>
                     <th className="p-4 text-center">Cases</th>
                     <th className="p-4 text-center">Medical Reports</th>
                     <th className="p-4 text-right">Actions</th>
@@ -488,35 +576,60 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {filteredUsers.map((u) => {
                     const reports = getUserReports(u.name, u.id);
+                    const userPhone = (u as any).mobileNumber;
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-4">
-                          <strong className="text-[14px] text-slate-900 block">{u.name}</strong>
-                          <span className="text-[12px] text-slate-500 font-mono-data">{u.email}</span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-[#003178] flex items-center justify-center font-bold text-[12px] shrink-0 border border-blue-200">
+                              {(u.name || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <strong className="text-[14px] text-slate-900 block truncate">{u.name}</strong>
+                              <span className="text-[12px] text-slate-500 font-mono-data block truncate">{u.email}</span>
+                              {userPhone && (
+                                <span className="text-[11px] text-emerald-700 font-mono-data flex items-center gap-1 mt-0.5">
+                                  <span className="material-symbols-outlined text-[13px]">smartphone</span>
+                                  <span>{userPhone}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="p-4">
-                          <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-[11px] font-bold">
+                          <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold inline-block ${
+                            u.role.includes('Admin')
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : u.role.includes('Doctor')
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : u.role.includes('Coordinator') || u.role.includes('Hospital')
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}>
                             {u.role}
                           </span>
                         </td>
                         <td className="p-4">
                           {u.status === 'Active' && (
-                            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full">
+                            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-200">
                               Active
                             </span>
                           )}
                           {u.status === 'Blocked' && (
-                            <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 text-[11px] font-bold rounded-full">
+                            <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 text-[11px] font-bold rounded-full border border-rose-200">
                               Blocked
                             </span>
                           )}
                           {u.status === 'Pending Verification' && (
-                            <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full">
+                            <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full border border-amber-200">
                               Pending
                             </span>
                           )}
                         </td>
-                        <td className="p-4 text-slate-600">{u.assignedHospital || 'N/A (Patient)'}</td>
+                        <td className="p-4 text-slate-600">
+                          <span className="block font-medium">{u.assignedHospital || (u as any).city || 'Bangalore'}</span>
+                          <span className="text-[11px] text-slate-400 font-mono-data">Joined: {u.joinedDate || 'Recent'}</span>
+                        </td>
                         <td className="p-4 text-center font-bold text-slate-800 font-mono-data">
                           {u.casesSubmitted}
                         </td>
@@ -716,8 +829,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
       {/* MODAL: ADD USER */}
       {isAddUserModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+        <div
+          onClick={() => setIsAddUserModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 cursor-default"
+          >
             <h3 className="text-[18px] font-bold text-[#003178]">Add New User Account</h3>
             <form onSubmit={handleSaveAddUser} className="space-y-4">
               <div>
@@ -760,13 +879,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddUserModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#003178] text-white font-bold text-[13px] rounded-xl hover:bg-[#0d47a1]"
+                  className="px-5 py-2 bg-[#003178] text-white font-bold text-[13px] rounded-xl hover:bg-[#0d47a1] cursor-pointer"
                 >
                   Create Account
                 </button>
@@ -778,8 +897,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
       {/* MODAL: ADD HOSPITAL */}
       {isAddHospitalModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+        <div
+          onClick={() => setIsAddHospitalModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 cursor-default"
+          >
             <h3 className="text-[18px] font-bold text-[#006f66]">Register Partner Hospital</h3>
             <form onSubmit={handleSaveAddHospital} className="space-y-4">
               <div>
@@ -827,13 +952,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddHospitalModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#006f66] text-white font-bold text-[13px] rounded-xl hover:bg-[#00524c]"
+                  className="px-5 py-2 bg-[#006f66] text-white font-bold text-[13px] rounded-xl hover:bg-[#00524c] cursor-pointer"
                 >
                   Register Unit
                 </button>
@@ -845,8 +970,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
       {/* EDIT USER MODAL */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div
+          onClick={() => setEditingUser(null)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl cursor-default"
+          >
             <h3 className="text-[18px] font-bold text-[#003178]">Edit User: {editingUser.name}</h3>
             <form onSubmit={handleSaveEditUser} className="space-y-4">
               <div>
@@ -879,13 +1010,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#003178] text-white font-bold text-[13px] rounded-xl hover:bg-[#0d47a1]"
+                  className="px-5 py-2 bg-[#003178] text-white font-bold text-[13px] rounded-xl hover:bg-[#0d47a1] cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -897,8 +1028,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
       {/* EDIT HOSPITAL MODAL */}
       {editingHospital && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div
+          onClick={() => setEditingHospital(null)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl cursor-default"
+          >
             <h3 className="text-[18px] font-bold text-[#006f66]">Edit Hospital Details</h3>
             <form onSubmit={handleSaveEditHospital} className="space-y-4">
               <div>
@@ -924,13 +1061,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingHospital(null)}
-                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-slate-600 font-bold text-[13px] hover:bg-slate-100 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#006f66] text-white font-bold text-[13px] rounded-xl hover:bg-[#00524c]"
+                  className="px-5 py-2 bg-[#006f66] text-white font-bold text-[13px] rounded-xl hover:bg-[#00524c] cursor-pointer"
                 >
                   Update Hospital
                 </button>
@@ -944,8 +1081,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
       {managingReportsUser && (() => {
         const userReports = getUserReports(managingReportsUser.name, managingReportsUser.id);
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in zoom-in-95">
+          <div
+            onClick={() => setManagingReportsUser(null)}
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in zoom-in-95 cursor-default"
+            >
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div>
                   <span className="text-[10px] font-black uppercase text-[#003178] tracking-wider font-mono">USER MEDICAL REPORTS MANAGER</span>

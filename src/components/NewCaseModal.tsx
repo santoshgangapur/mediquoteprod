@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SurgicalCase, FamilyMember, HospitalEmailDispatch } from '../types';
 
 interface NewCaseModalProps {
@@ -20,6 +20,20 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [subtitle, setSubtitle] = useState('Gallbladder Removal Surgery');
   const [description, setDescription] = useState('Comparing specialized surgical teams with pre-op clearance & post-op hospital stay.');
   const [insuranceProvider, setInsuranceProvider] = useState('HDFC Optima Restore');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -169,8 +183,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full p-6 shadow-2xl space-y-6 relative">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 flex justify-center items-start sm:items-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full p-6 shadow-2xl space-y-6 relative my-auto cursor-default"
+      >
         <div className="flex justify-between items-center border-b border-[#c3c6d4]/60 pb-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#003178]">add_circle</span>

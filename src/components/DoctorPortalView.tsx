@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PDFViewer } from './PDFViewer';
 import { SurgicalCase, HospitalQuote, ViewMode, DetailedHospitalProfile, MedicalRecord } from '../types';
 import { detailedHospitalsList, initialMedicalRecords } from '../data/mockData';
@@ -49,6 +49,34 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
   } | null>(null);
   const [passError, setPassError] = useState<string | null>(null);
 
+  // Quote Preparation Form Modal State
+  const [quoteModalCase, setQuoteModalCase] = useState<SurgicalCase | null>(null);
+  const [selectedDoctorName, setSelectedDoctorName] = useState<string>('Dr. S. K. Nair');
+  const [surgicalFee, setSurgicalFee] = useState<number>(110000);
+  const [roomRent, setRoomRent] = useState<number>(40000);
+  const [implantsFee, setImplantsFee] = useState<number>(25000);
+  const [consultationLabs, setConsultationLabs] = useState<number>(15000);
+  const [discountFee, setDiscountFee] = useState<number>(5000);
+  const [roomTier, setRoomTier] = useState<string>('Private AC Deluxe Suite');
+  const [estStayDays, setEstStayDays] = useState<string>('2 Nights Stay');
+  const [isQuoteSentSuccess, setIsQuoteSentSuccess] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (whatsappModalCase) setWhatsappModalCase(null);
+        if (callModalCase) setCallModalCase(null);
+        if (chatModalCase) setChatModalCase(null);
+        if (scanInspectorCase) setScanInspectorCase(null);
+        if (quoteModalCase) setQuoteModalCase(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [whatsappModalCase, callModalCase, chatModalCase, scanInspectorCase, quoteModalCase]);
+
   const handleVerify24HourPass = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setPassError(null);
@@ -70,18 +98,6 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
     });
     setScanInspectorCase(matchedCase);
   };
-
-  // Quote Preparation Form Modal State
-  const [quoteModalCase, setQuoteModalCase] = useState<SurgicalCase | null>(null);
-  const [selectedDoctorName, setSelectedDoctorName] = useState<string>('Dr. S. K. Nair');
-  const [surgicalFee, setSurgicalFee] = useState<number>(110000);
-  const [roomRent, setRoomRent] = useState<number>(40000);
-  const [implantsFee, setImplantsFee] = useState<number>(25000);
-  const [consultationLabs, setConsultationLabs] = useState<number>(15000);
-  const [discountFee, setDiscountFee] = useState<number>(5000);
-  const [roomTier, setRoomTier] = useState<string>('Private AC Deluxe Suite');
-  const [estStayDays, setEstStayDays] = useState<string>('2 Nights Stay');
-  const [isQuoteSentSuccess, setIsQuoteSentSuccess] = useState(false);
 
   // Calculated quote total in ₹ INR
   const totalQuoteCalculated = Math.max(0, surgicalFee + roomRent + implantsFee + consultationLabs - discountFee);
@@ -575,14 +591,20 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
 
       {/* WHATSAPP CONTACT MODAL */}
       {whatsappModalCase && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl border border-[#c3c6d4] max-w-md w-full overflow-hidden shadow-2xl">
+        <div
+          onClick={() => setWhatsappModalCase(null)}
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl border border-[#c3c6d4] max-w-md w-full overflow-hidden shadow-2xl cursor-default"
+          >
             <div className="bg-emerald-700 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined">chat_bubble</span>
                 <h3 className="font-bold text-[16px]">Connect via WhatsApp</h3>
               </div>
-              <button onClick={() => setWhatsappModalCase(null)} className="text-white hover:text-emerald-200">
+              <button onClick={() => setWhatsappModalCase(null)} className="text-white hover:text-emerald-200 cursor-pointer">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -599,7 +621,7 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   onClick={() => setWhatsappModalCase(null)}
-                  className="px-4 py-2 border rounded-xl font-bold text-[#434652]"
+                  className="px-4 py-2 border rounded-xl font-bold text-[#434652] cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -620,14 +642,20 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
 
       {/* DIRECT CALL MODAL */}
       {callModalCase && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl border border-[#c3c6d4] max-w-md w-full overflow-hidden shadow-2xl">
+        <div
+          onClick={() => setCallModalCase(null)}
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl border border-[#c3c6d4] max-w-md w-full overflow-hidden shadow-2xl cursor-default"
+          >
             <div className="bg-blue-800 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined">call</span>
                 <h3 className="font-bold text-[16px]">Direct Call Patient Dialer</h3>
               </div>
-              <button onClick={() => setCallModalCase(null)} className="text-white hover:text-blue-200">
+              <button onClick={() => setCallModalCase(null)} className="text-white hover:text-blue-200 cursor-pointer">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -646,7 +674,7 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
               <div className="flex justify-center gap-3 pt-3">
                 <button
                   onClick={() => setCallModalCase(null)}
-                  className="px-4 py-2 border rounded-xl font-bold text-[#434652]"
+                  className="px-4 py-2 border rounded-xl font-bold text-[#434652] cursor-pointer"
                 >
                   Close
                 </button>
@@ -665,14 +693,20 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
 
       {/* IN-APP CHAT MODAL */}
       {chatModalCase && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full overflow-hidden shadow-2xl space-y-4">
+        <div
+          onClick={() => setChatModalCase(null)}
+          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full overflow-hidden shadow-2xl space-y-4 cursor-default"
+          >
             <div className="bg-[#003178] text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#81f3e5]">forum</span>
                 <h3 className="font-bold text-[16px]">In-App Direct Messenger</h3>
               </div>
-              <button onClick={() => setChatModalCase(null)} className="text-white hover:text-blue-200">
+              <button onClick={() => setChatModalCase(null)} className="text-white hover:text-blue-200 cursor-pointer">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -704,7 +738,7 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
 
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-[#003178] text-white font-bold rounded-xl hover:bg-[#0d47a1]"
+                    className="px-5 py-2 bg-[#003178] text-white font-bold rounded-xl hover:bg-[#0d47a1] cursor-pointer"
                   >
                     Send In-App Message
                   </button>
@@ -726,8 +760,14 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
         const activeDoc = availableRecords.find((r) => r.id === activeInspectorDocId) || availableRecords[0];
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in overflow-y-auto">
-            <div className="bg-white rounded-3xl border border-[#c3c6d4] max-w-5xl w-full max-h-[92vh] overflow-hidden shadow-2xl flex flex-col my-auto">
+          <div
+            onClick={() => setScanInspectorCase(null)}
+            className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 animate-in fade-in overflow-y-auto cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl border border-[#c3c6d4] max-w-5xl w-full max-h-[92vh] overflow-hidden shadow-2xl flex flex-col my-auto cursor-default"
+            >
               {/* Inspector Header */}
               <div className="p-4 sm:p-5 bg-[#00245a] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1210,8 +1250,14 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
 
       {/* ITEMIZED QUOTATION FORM MODAL */}
       {quoteModalCase && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in overflow-y-auto">
-          <div className="bg-white border border-[#c3c6d4] text-[#071e27] rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-5 my-8">
+        <div
+          onClick={() => setQuoteModalCase(null)}
+          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in overflow-y-auto cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border border-[#c3c6d4] text-[#071e27] rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-5 my-8 cursor-default"
+          >
             <div className="flex items-center justify-between border-b border-[#c3c6d4] pb-3">
               <div>
                 <span className="text-[#006f66] text-[11px] font-extrabold font-mono-data uppercase">
@@ -1221,7 +1267,7 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
                   Issue Quotation for {quoteModalCase.title}
                 </h3>
               </div>
-              <button onClick={() => setQuoteModalCase(null)} className="p-1 hover:bg-slate-100 rounded-lg">
+              <button onClick={() => setQuoteModalCase(null)} className="p-1 hover:bg-slate-100 rounded-lg cursor-pointer">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>

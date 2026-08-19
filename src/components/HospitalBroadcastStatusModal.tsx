@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SurgicalCase, HospitalEmailDispatch } from '../types';
 
 interface HospitalBroadcastStatusModalProps {
@@ -14,6 +14,20 @@ export const HospitalBroadcastStatusModal: React.FC<HospitalBroadcastStatusModal
   currentCase,
   onResendBroadcast,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const dispatches: HospitalEmailDispatch[] = currentCase.hospitalDispatches || [
@@ -57,8 +71,14 @@ export const HospitalBroadcastStatusModal: React.FC<HospitalBroadcastStatusModal
   const quotesOffered = dispatches.filter((d) => d.status === 'Quotation Offered').length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl border border-[#c3c6d4] shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-4 flex justify-center items-start sm:items-center bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl border border-[#c3c6d4] shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh] my-auto cursor-default"
+      >
         {/* Modal Top Header */}
         <div className="bg-[#003178] text-white p-6 relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#81f3e5]/10 rounded-full blur-3xl pointer-events-none" />

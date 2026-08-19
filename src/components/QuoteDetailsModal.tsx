@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HospitalQuote } from '../types';
 
 interface QuoteDetailsModalProps {
@@ -12,11 +12,31 @@ export const QuoteDetailsModal: React.FC<QuoteDetailsModalProps> = ({
   onClose,
   onProceedToBooking,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (hospital) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hospital, onClose]);
+
   if (!hospital) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full p-6 shadow-2xl space-y-5 relative">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 flex justify-center items-start sm:items-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full p-6 shadow-2xl space-y-5 relative my-auto cursor-default"
+      >
         <div className="flex justify-between items-center border-b border-[#c3c6d4]/60 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-white border border-[#c3c6d4] p-1 flex items-center justify-center">

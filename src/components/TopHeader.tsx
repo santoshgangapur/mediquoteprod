@@ -16,6 +16,7 @@ interface TopHeaderProps {
   authUser?: AuthUser | null;
   onOpenAuthModal?: () => void;
   onOpenPhoneVerificationModal?: () => void;
+  onOpenPlayStoreModal?: () => void;
   onLogout?: () => void;
 }
 
@@ -32,6 +33,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   authUser,
   onOpenAuthModal,
   onOpenPhoneVerificationModal,
+  onOpenPlayStoreModal,
   onLogout,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -219,7 +221,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   };
 
   return (
-    <header className="fixed top-0 left-0 lg:left-64 right-0 z-30 flex justify-between items-center px-4 md:px-8 h-16 bg-[#f3faff] border-b border-[#c3c6d4]">
+    <header className="fixed top-0 left-0 lg:left-64 right-0 z-30 flex justify-between items-center px-4 md:px-8 h-16 bg-[#f3faff]/95 backdrop-blur-md border-b border-[#c3c6d4] shadow-xs">
       {/* Title & Mobile Brand */}
       <div className="flex items-center gap-3">
         {/* Mobile menu logo */}
@@ -241,7 +243,13 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         {/* Android / Play Store App Button - Icon Only */}
         <button
           type="button"
-          onClick={() => setIsPlayStoreModalOpen(true)}
+          onClick={() => {
+            if (onOpenPlayStoreModal) {
+              onOpenPlayStoreModal();
+            } else {
+              setIsPlayStoreModalOpen(true);
+            }
+          }}
           className="flex items-center justify-center px-3.5 py-1.5 bg-[#70f3e0] hover:bg-[#50ebd6] text-[#00382f] rounded-full transition-all shadow-xs cursor-pointer border border-[#4be0cc]/60 active:scale-95"
           title={authUser?.role === 'admin' ? "Play Console & Android Deployment Studio" : "Install MediQuote AI Mobile App"}
         >
@@ -923,12 +931,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           </button>
         )}
       </div>
-
-      <PlayStoreExportModal
-        isOpen={isPlayStoreModalOpen}
-        onClose={() => setIsPlayStoreModalOpen(false)}
-        authUser={authUser}
-      />
     </header>
   );
 };

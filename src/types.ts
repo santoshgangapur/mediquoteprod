@@ -47,6 +47,8 @@ export interface AdminUser {
   joinedDate: string;
   assignedHospital?: string;
   casesSubmitted: number;
+  mobileNumber?: string;
+  city?: string;
 }
 
 export interface AdminHospital {

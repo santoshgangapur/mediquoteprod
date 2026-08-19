@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FamilyMember, SurgicalCase, ViewMode } from '../types';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
@@ -34,6 +34,23 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
   const [memberToDelete, setMemberToDelete] = useState<FamilyMember | null>(null);
   const [cannotDeleteNotice, setCannotDeleteNotice] = useState<string | null>(null);
   const [activeTabMemberId, setActiveTabMemberId] = useState<string>(activeMemberId || 'all');
+
+  // Escape key handler for modals in FamilyProfilesView
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (cannotDeleteNotice) {
+          setCannotDeleteNotice(null);
+        } else if (editingMember) {
+          setEditingMember(null);
+        } else if (isAddModalOpen) {
+          setIsAddModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cannotDeleteNotice, editingMember, isAddModalOpen]);
 
   // Form State for New Member
   const [fullName, setFullName] = useState('');
@@ -406,8 +423,14 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
 
       {/* ADD FAMILY MEMBER MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-2xl border border-[#c3c6d4] shadow-2xl max-w-lg w-full overflow-hidden">
+        <div
+          onClick={() => setIsAddModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl border border-[#c3c6d4] shadow-2xl max-w-lg w-full overflow-hidden cursor-default"
+          >
             <div className="bg-[#003178] text-white p-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#81f3e5]">person_add</span>
@@ -415,7 +438,7 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-white hover:text-blue-200"
+                className="text-white hover:text-blue-200 cursor-pointer"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -551,8 +574,14 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
 
       {/* MODAL: EDIT FAMILY MEMBER PROFILE */}
       {editingMember && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setEditingMember(null)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto cursor-default"
+          >
             <div className="flex items-center justify-between border-b border-[#c3c6d4]/60 pb-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#003178] text-[24px]">manage_accounts</span>
@@ -731,8 +760,14 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
 
       {/* CANNOT DELETE PRIMARY PROFILE NOTICE MODAL */}
       {cannotDeleteNotice && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-amber-200">
+        <div
+          onClick={() => setCannotDeleteNotice(null)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-amber-200 cursor-default"
+          >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-[24px]">info</span>

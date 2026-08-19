@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -25,12 +25,30 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   onConfirm,
   onClose,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-150 cursor-pointer"
+    >
       <div
-        className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-red-100 animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-red-100 animate-in zoom-in-95 duration-150 my-auto cursor-default"
         role="dialog"
         aria-modal="true"
       >

@@ -37,7 +37,18 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         setPhoneNumber(authUser.mobileNumber.replace(/^\+91/, ''));
       }
     }
-  }, [isOpen, authUser]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, authUser, onClose]);
 
   useEffect(() => {
     let interval: any = null;
@@ -178,8 +189,14 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl border border-[#c3c6d4] max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-6 relative overflow-hidden">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 flex justify-center items-start sm:items-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl border border-[#c3c6d4] max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-6 relative my-auto overflow-hidden cursor-default"
+      >
         {/* Decorative background accent */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-[#006f66]/10 rounded-full blur-2xl pointer-events-none" />
 

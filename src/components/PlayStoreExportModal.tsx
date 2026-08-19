@@ -63,6 +63,20 @@ export const PlayStoreExportModal: React.FC<PlayStoreExportModalProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleInstallClick = async () => {
@@ -554,45 +568,55 @@ end`;
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-8 shadow-2xl border border-[#c3c6d4] space-y-6 relative max-h-[92vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-[#737783] hover:text-[#003178] hover:bg-[#e6f6ff] rounded-full transition-colors cursor-pointer z-10"
-          title="Close Modal"
-        >
-          <span className="material-symbols-outlined text-[24px]">close</span>
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3 border-b border-[#c3c6d4] pb-4 pr-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#003178] via-[#006f66] to-[#70f3e0] text-white flex items-center justify-center shadow-md shrink-0">
-            <span className="material-symbols-outlined text-[28px]">
-              {isAdmin ? 'build_circle' : 'phone_android'}
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 bg-[#70f3e0] text-[#00382f] text-[10px] font-black rounded font-mono-data uppercase tracking-wider">
-                {isAdmin ? 'PWABUILDER STUDIO NATIVE' : 'MOBILE APP INSTALLER'}
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 overflow-y-auto p-3 sm:p-6 flex justify-center items-start sm:items-center animate-in fade-in duration-200 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-8 shadow-2xl border border-[#c3c6d4] relative my-auto max-h-[92vh] flex flex-col overflow-hidden cursor-default"
+      >
+        {/* Sticky/Fixed Modal Header with Close Button */}
+        <div className="flex items-center justify-between gap-3 border-b border-[#c3c6d4] pb-4 mb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#003178] via-[#006f66] to-[#70f3e0] text-white flex items-center justify-center shadow-md shrink-0">
+              <span className="material-symbols-outlined text-[28px]">
+                {isAdmin ? 'build_circle' : 'phone_android'}
               </span>
-              {isAdmin && (
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded">
-                  PWA Score: 100/100
-                </span>
-              )}
             </div>
-            <h2 className="text-[18px] sm:text-[22px] font-extrabold text-[#003178] leading-snug">
-              {isAdmin
-                ? 'PWABuilder App Store Export Studio'
-                : 'Install MediQuote AI App on Android & Mobile'}
-            </h2>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 bg-[#70f3e0] text-[#00382f] text-[10px] font-black rounded font-mono-data uppercase tracking-wider">
+                  {isAdmin ? 'PWABUILDER STUDIO NATIVE' : 'MOBILE APP INSTALLER'}
+                </span>
+                {isAdmin && (
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded">
+                    PWA Score: 100/100
+                  </span>
+                )}
+              </div>
+              <h2 className="text-[18px] sm:text-[22px] font-extrabold text-[#003178] leading-snug">
+                {isAdmin
+                  ? 'PWABuilder App Store Export Studio'
+                  : 'Install MediQuote AI App on Android & Mobile'}
+              </h2>
+            </div>
           </div>
+
+          <button
+            onClick={onClose}
+            className="p-2 text-[#737783] hover:text-[#003178] hover:bg-[#e6f6ff] rounded-full transition-colors cursor-pointer shrink-0"
+            title="Close Modal"
+          >
+            <span className="material-symbols-outlined text-[24px]">close</span>
+          </button>
         </div>
 
-        {/* =================================================================== */}
-        {/* NON-ADMIN VIEW: CLEAN DIRECT DOWNLOAD & SIMPLE PHONE INSTALLATION   */}
-        {/* =================================================================== */}
+        {/* Scrollable Content Body */}
+        <div className="space-y-6 overflow-y-auto flex-1 pr-1">
+          {/* =================================================================== */}
+          {/* NON-ADMIN VIEW: CLEAN DIRECT DOWNLOAD & SIMPLE PHONE INSTALLATION   */}
+          {/* =================================================================== */}
         {!isAdmin && (
           <div className="space-y-5">
             <div className="p-5 bg-gradient-to-br from-[#e6f6ff] via-[#f3faff] to-white rounded-2xl border border-[#003178]/20 space-y-4 shadow-xs">
@@ -1233,6 +1257,7 @@ end`;
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

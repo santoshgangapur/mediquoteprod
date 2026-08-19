@@ -28,6 +28,7 @@ import {
   fetchHospitalsFromCloud,
   fetchFamilyMembersFromCloud,
   fetchRecordsFromCloud,
+  fetchUsersFromCloud,
   saveCaseToCloud,
   deleteCaseFromCloud,
   saveHospitalToCloud,
@@ -36,7 +37,10 @@ import {
   deleteFamilyMemberFromCloud,
   saveRecordToCloud,
   deleteRecordFromCloud,
+  saveUserToCloud,
 } from './lib/dbService';
+import { auth } from './lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 import { MobileAuthModal } from './components/MobileAuthModal';
 import { PhoneVerificationModal } from './components/PhoneVerificationModal';
@@ -64,6 +68,7 @@ import { NewCaseModal } from './components/NewCaseModal';
 import { QuoteDetailsModal } from './components/QuoteDetailsModal';
 import { ShareModal } from './components/ShareModal';
 import { BookingSuccessModal } from './components/BookingSuccessModal';
+import { PlayStoreExportModal } from './components/PlayStoreExportModal';
 
 export const App: React.FC = () => {
   const [personas, setPersonas] = useState<UserPersona[]>(initialPersonas);
@@ -89,11 +94,63 @@ export const App: React.FC = () => {
   const [selectedFinancing, setSelectedFinancing] = useState<FinancingOption>(defaultFinancingOptions[0]);
   const [selectedHospitalProfileId, setSelectedHospitalProfileId] = useState<string>('apollo-1');
 
-  // Authentication State with Google OAuth + Email first & deferred phone verification (by default not logged in)
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  // Authentication State with Google OAuth + Email first & deferred phone verification (persisted in localStorage)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('mediquote_auth_user');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (_e) {}
+    return null;
+  });
+
+  // Sync authUser with localStorage
+  useEffect(() => {
+    if (authUser) {
+      try {
+        localStorage.setItem('mediquote_auth_user', JSON.stringify(authUser));
+      } catch (_e) {}
+    } else {
+      localStorage.removeItem('mediquote_auth_user');
+    }
+  }, [authUser]);
+
+  // Firebase Auth State Listener to maintain persistent session on refresh
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        const cleanEmail = firebaseUser.email.trim().toLowerCase();
+        const isAdmin = cleanEmail === 'santoshgangapur@gmail.com' || cleanEmail.includes('admin');
+        setAuthUser((prev) => {
+          if (prev && prev.email && prev.email.toLowerCase() === cleanEmail) {
+            return prev;
+          }
+          const restored: AuthUser = {
+            id: firebaseUser.uid || `usr-${Date.now()}`,
+            name: firebaseUser.displayName || prev?.name || cleanEmail.split('@')[0],
+            email: cleanEmail,
+            emailVerified: firebaseUser.emailVerified || true,
+            role: isAdmin ? 'admin' : (prev?.role || 'patient'),
+            authProvider: 'google',
+            avatarUrl: firebaseUser.photoURL || prev?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(firebaseUser.displayName || cleanEmail)}`,
+            mobileNumber: firebaseUser.phoneNumber || prev?.mobileNumber || '',
+            isPhoneVerified: !!firebaseUser.phoneNumber || !!prev?.isPhoneVerified,
+            city: prev?.city || 'Bangalore',
+            organizationName: prev?.organizationName,
+            registrationNo: prev?.registrationNo,
+          };
+          return restored;
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const [isMobileAuthModalOpen, setIsMobileAuthModalOpen] = useState(false);
   const [isPhoneVerificationModalOpen, setIsPhoneVerificationModalOpen] = useState(false);
+  const [isPlayStoreExportModalOpen, setIsPlayStoreExportModalOpen] = useState(false);
   const [phoneVerificationPrompt, setPhoneVerificationPrompt] = useState(
     '📱 Please verify your mobile number so hospitals can contact you regarding your quotation.'
   );
@@ -111,29 +168,53 @@ export const App: React.FC = () => {
 
   const [isCloudSyncActive, setIsCloudSyncActive] = useState<boolean>(false);
 
-  // Initialize and load persistent data from Cloud Firestore
+  // Initialize and load persistent data from Cloud Firestore & Server Backend
   useEffect(() => {
     async function loadCloudDatabase() {
       const initResult = await initializeDatabase();
       setIsCloudSyncActive(initResult.cloudActive);
 
-      if (initResult.cloudActive) {
-        const [cloudCases, cloudHospitals, cloudFamily, cloudRecords] = await Promise.all([
+      try {
+        const [cloudCases, cloudHospitals, cloudFamily, cloudRecords, cloudUsers] = await Promise.all([
           fetchCasesFromCloud(),
           fetchHospitalsFromCloud(),
           fetchFamilyMembersFromCloud(),
           fetchRecordsFromCloud(),
+          fetchUsersFromCloud(),
         ]);
 
         if (cloudCases && cloudCases.length > 0) setCases(cloudCases);
         if (cloudHospitals && cloudHospitals.length > 0) setAdminHospitals(cloudHospitals);
         if (cloudFamily && cloudFamily.length > 0) setFamilyMembers(cloudFamily);
         if (cloudRecords && cloudRecords.length > 0) setRecords(cloudRecords);
+        if (cloudUsers && cloudUsers.length > 0) setAdminUsers(cloudUsers);
+      } catch (err) {
+        console.warn('Error loading cloud database:', err);
       }
     }
 
     loadCloudDatabase();
   }, []);
+
+  const handleRefreshUsers = async () => {
+    try {
+      const cloudUsers = await fetchUsersFromCloud();
+      if (cloudUsers && cloudUsers.length > 0) {
+        setAdminUsers(cloudUsers);
+      }
+    } catch (err) {
+      console.warn('Error refreshing cloud users:', err);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (_e) {}
+    localStorage.removeItem('mediquote_auth_user');
+    setAuthUser(null);
+    handleNavigate('landing');
+  };
 
   // Handlers
   const handleNavigate = (view: ViewMode) => {
@@ -276,6 +357,21 @@ export const App: React.FC = () => {
   const handlePhoneVerificationSuccess = (updatedUser: AuthUser) => {
     setAuthUser(updatedUser);
 
+    // Update in admin directory as well
+    setAdminUsers((prev) => {
+      const existing = prev.find((u) => u.email.toLowerCase() === updatedUser.email.toLowerCase() || u.id === updatedUser.id);
+      if (existing) {
+        const updated = {
+          ...existing,
+          mobileNumber: updatedUser.mobileNumber,
+          status: 'Active' as const,
+        };
+        saveUserToCloud(updated);
+        return prev.map((u) => (u.id === existing.id ? updated : u));
+      }
+      return prev;
+    });
+
     if (pendingActionAfterPhoneVerification) {
       const action = pendingActionAfterPhoneVerification;
       setPendingActionAfterPhoneVerification(null);
@@ -311,10 +407,8 @@ export const App: React.FC = () => {
           setPendingActionAfterPhoneVerification(null);
           setIsPhoneVerificationModalOpen(true);
         }}
-        onLogout={() => {
-          setAuthUser(null);
-          handleNavigate('landing');
-        }}
+        onOpenPlayStoreModal={() => setIsPlayStoreExportModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Sidebar for Desktop Navigation */}
@@ -334,7 +428,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 lg:ml-64 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-12">
+      <main className="flex-1 lg:ml-64 px-4 py-6 pt-20 md:px-6 md:pt-22 lg:px-8 lg:pt-24 max-w-7xl w-full mx-auto pb-24 lg:pb-12">
         {currentView === 'landing' && (
           <LandingView
             onNavigate={handleNavigate}
@@ -388,6 +482,7 @@ export const App: React.FC = () => {
             onUpdateUsers={setAdminUsers}
             onUpdateHospitals={setAdminHospitals}
             onUpdateRecords={setRecords}
+            onRefreshUsers={handleRefreshUsers}
             onNavigate={handleNavigate}
             authUser={authUser}
             onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
@@ -617,6 +712,39 @@ export const App: React.FC = () => {
         onClose={() => setIsMobileAuthModalOpen(false)}
         onLoginSuccess={(user) => {
           setAuthUser(user);
+
+          // Map signed in user into AdminUser format and add to directory if not present
+          const userRoleLabel: 'System Admin' | 'Doctor' | 'Hospital Coordinator' | 'Patient' =
+            user.role === 'admin'
+              ? 'System Admin'
+              : user.role === 'hospital'
+              ? 'Hospital Coordinator'
+              : 'Patient';
+
+          const newAdminUser: any = {
+            id: user.id || `usr-${Date.now()}`,
+            name: user.name || 'User',
+            email: user.email.toLowerCase(),
+            role: userRoleLabel,
+            status: 'Active',
+            joinedDate: 'Just now',
+            assignedHospital: user.organizationName || (user.role === 'hospital' ? 'Apollo Hospitals' : undefined),
+            casesSubmitted: 0,
+            mobileNumber: user.mobileNumber || '',
+            city: user.city || 'Bangalore',
+          };
+
+          setAdminUsers((prev) => {
+            const exists = prev.some((u) => u.email.toLowerCase() === newAdminUser.email.toLowerCase() || u.id === newAdminUser.id);
+            if (!exists) {
+              saveUserToCloud(newAdminUser);
+              return [newAdminUser, ...prev];
+            } else {
+              saveUserToCloud(newAdminUser);
+              return prev.map((u) => (u.email.toLowerCase() === newAdminUser.email.toLowerCase() ? { ...u, ...newAdminUser } : u));
+            }
+          });
+
           if (user.role === 'admin') {
             handleNavigate('admin');
           } else if (user.role === 'hospital') {
@@ -667,6 +795,12 @@ export const App: React.FC = () => {
           setIsBookingSuccessModalOpen(false);
           handleNavigate('dashboard');
         }}
+      />
+
+      <PlayStoreExportModal
+        isOpen={isPlayStoreExportModalOpen}
+        onClose={() => setIsPlayStoreExportModalOpen(false)}
+        authUser={authUser}
       />
 
       {/* Floating Free SMS Telecom Receiver & Inbox Widget */}

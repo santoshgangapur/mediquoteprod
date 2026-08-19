@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HospitalQuote, FinancingOption } from '../types';
 
 interface BookingSuccessModalProps {
@@ -14,13 +14,33 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
   financing,
   onClose,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !hospital) return null;
 
   const bookingCode = `RES-${Math.floor(100000 + Math.random() * 900000)}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-150">
-      <div className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full p-6 shadow-2xl space-y-6 text-center relative">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 overflow-y-auto p-4 flex justify-center items-start sm:items-center bg-black/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl border border-[#c3c6d4] max-w-lg w-full p-6 shadow-2xl space-y-6 text-center relative my-auto cursor-default"
+      >
         <div className="w-16 h-16 rounded-full bg-[#81f3e5] text-[#006f66] flex items-center justify-center mx-auto shadow-md">
           <span className="material-symbols-outlined text-[36px]">check_circle</span>
         </div>

@@ -238,6 +238,28 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
     }
   }, [familyMembers]);
 
+  // Handle Escape key to close any active vault modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedDocForPreview) {
+          setSelectedDocForPreview(null);
+          setDocPreviewZoom(100);
+          setDocPreviewContrast(false);
+        } else if (selectedDocForEdit) {
+          setSelectedDocForEdit(null);
+        } else if (selectedDocForAudit) {
+          setSelectedDocForAudit(null);
+        } else if (isPinModalOpen) {
+          setIsPinModalOpen(false);
+          setPinModalError('');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDocForPreview, selectedDocForEdit, selectedDocForAudit, isPinModalOpen]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -971,8 +993,14 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
 
       {/* EDIT DOCUMENT MODAL */}
       {selectedDocForEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white max-w-md w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden space-y-4 p-6 relative">
+        <div
+          onClick={() => setSelectedDocForEdit(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white max-w-md w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden space-y-4 p-6 relative cursor-default"
+          >
             <div className="flex justify-between items-center border-b pb-3">
               <div className="flex items-center gap-2 text-[#003178]">
                 <span className="material-symbols-outlined text-[24px]">edit_document</span>
@@ -1070,8 +1098,14 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
 
       {/* HIPAA Audit Log Modal */}
       {selectedDocForAudit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white max-w-lg w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden space-y-4 p-6">
+        <div
+          onClick={() => setSelectedDocForAudit(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white max-w-lg w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden space-y-4 p-6 cursor-default"
+          >
             <div className="flex justify-between items-center border-b pb-3">
               <div className="flex items-center gap-2 text-[#003178]">
                 <span className="material-symbols-outlined text-[24px]">security</span>
@@ -1122,8 +1156,18 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
 
       {/* Document Quick Preview & Inspection Modal */}
       {selectedDocForPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in overflow-y-auto">
-          <div className="bg-white max-w-4xl w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden my-auto space-y-0 flex flex-col max-h-[92vh]">
+        <div
+          onClick={() => {
+            setSelectedDocForPreview(null);
+            setDocPreviewZoom(100);
+            setDocPreviewContrast(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in overflow-y-auto cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white max-w-4xl w-full rounded-3xl border border-[#c3c6d4] shadow-2xl overflow-hidden my-auto space-y-0 flex flex-col max-h-[92vh] cursor-default"
+          >
             {/* Modal Header */}
             <div className="p-4 sm:p-5 bg-[#00245a] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
@@ -1742,8 +1786,17 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
 
       {/* Master Security PIN Modal */}
       {isPinModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white max-w-md w-full rounded-3xl border-2 border-[#003178]/30 shadow-2xl overflow-hidden space-y-4 p-6 relative">
+        <div
+          onClick={() => {
+            setIsPinModalOpen(false);
+            setPinModalError('');
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white max-w-md w-full rounded-3xl border-2 border-[#003178]/30 shadow-2xl overflow-hidden space-y-4 p-6 relative cursor-default"
+          >
             <div className="flex justify-between items-center border-b border-[#e2e8f0] pb-3">
               <div className="flex items-center gap-2.5 text-[#003178]">
                 <div className="w-10 h-10 rounded-xl bg-[#003178] text-white flex items-center justify-center shadow-xs">
