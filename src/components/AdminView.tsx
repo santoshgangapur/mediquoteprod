@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { AdminUser, AdminHospital, ViewMode, MedicalRecord } from '../types';
+import { AdminUser, AdminHospital, ViewMode, MedicalRecord, AuthUser } from '../types';
 import { SmsGatewayManagerModal } from './SmsGatewayManagerModal';
 import { PlayStoreExportModal } from './PlayStoreExportModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { initialMedicalRecords } from '../data/mockData';
 
 interface AdminViewProps {
@@ -12,7 +13,7 @@ interface AdminViewProps {
   onUpdateHospitals: (hospitals: AdminHospital[]) => void;
   onUpdateRecords?: (records: MedicalRecord[]) => void;
   onNavigate: (view: ViewMode) => void;
-  authUser?: { mobileNumber: string; role: 'admin' | 'patient' | 'hospital' | 'insurance' | 'finance'; name: string } | null;
+  authUser?: AuthUser | null;
   onOpenAuthModal?: () => void;
 }
 
@@ -31,8 +32,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [isSmsManagerOpen, setIsSmsManagerOpen] = useState(false);
   const [isPlayStoreModalOpen, setIsPlayStoreModalOpen] = useState(false);
 
-  // Check if current authenticated user is super admin
-  const isAdmin = authUser?.role === 'admin' || authUser?.mobileNumber === '+919246195689';
+  // In-app Delete Confirmation Modal State
+  const [deleteModalConfig, setDeleteModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    itemType: string;
+    itemName: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // Check if current authenticated user is admin
+  const isAdmin = authUser?.role === 'admin' || authUser?.email === 'santoshgangapur@gmail.com';
 
   // Toast / Status state
   const [managingReportsUser, setManagingReportsUser] = useState<AdminUser | null>(null);
@@ -92,50 +103,74 @@ export const AdminView: React.FC<AdminViewProps> = ({
     if (!targetUser) return;
 
     const reportsCount = getUserReports(targetUser.name, targetUser.id).length;
-    const confirmMsg = reportsCount > 0
-      ? `Are you sure you want to permanently delete user "${targetUser.name}" AND delete their ${reportsCount} uploaded medical report(s)?`
-      : `Are you sure you want to permanently delete user "${targetUser.name}"?`;
+    setDeleteModalConfig({
+      isOpen: true,
+      title: 'Delete User Account',
+      itemType: 'User Profile',
+      itemName: `${targetUser.name} (${targetUser.email})`,
+      message:
+        reportsCount > 0
+          ? `Are you sure you want to permanently delete user "${targetUser.name}"? This will also remove their ${reportsCount} uploaded medical report(s).`
+          : `Are you sure you want to permanently delete user "${targetUser.name}"? This action cannot be undone.`,
+      onConfirm: () => {
+        // 1. Delete user from admin users list
+        onUpdateUsers(users.filter((u) => u.id !== userId));
 
-    if (confirm(confirmMsg)) {
-      // 1. Delete user from admin users list
-      onUpdateUsers(users.filter((u) => u.id !== userId));
-
-      // 2. Delete user's medical reports if callback available
-      if (onUpdateRecords && reportsCount > 0) {
-        onUpdateRecords(
-          medicalRecords.filter(
-            (r) =>
-              (r.patientMemberName && r.patientMemberName.toLowerCase() !== targetUser.name.toLowerCase()) &&
-              r.patientMemberId !== targetUser.id
-          )
-        );
-      }
-    }
+        // 2. Delete user's medical reports if callback available
+        if (onUpdateRecords && reportsCount > 0) {
+          onUpdateRecords(
+            medicalRecords.filter(
+              (r) =>
+                (r.patientMemberName && r.patientMemberName.toLowerCase() !== targetUser.name.toLowerCase()) &&
+                r.patientMemberId !== targetUser.id
+            )
+          );
+        }
+        if (managingReportsUser?.id === userId) {
+          setManagingReportsUser(null);
+        }
+      },
+    });
   };
 
   const handleDeleteUserReport = (reportId: string) => {
-    if (confirm('Are you sure you want to delete this medical report?')) {
-      if (onUpdateRecords) {
-        onUpdateRecords(medicalRecords.filter((r) => r.id !== reportId));
-      }
-    }
+    const targetReport = medicalRecords.find((r) => r.id === reportId);
+    setDeleteModalConfig({
+      isOpen: true,
+      title: 'Delete Medical Report',
+      itemType: 'Medical Document',
+      itemName: targetReport ? targetReport.fileName : 'Medical Document',
+      message: 'Are you sure you want to permanently delete this medical report from the secure vault?',
+      onConfirm: () => {
+        if (onUpdateRecords) {
+          onUpdateRecords(medicalRecords.filter((r) => r.id !== reportId));
+        }
+      },
+    });
   };
 
   const handleDeleteAllReportsForUser = (user: AdminUser) => {
     const reports = getUserReports(user.name, user.id);
     if (reports.length === 0) return;
 
-    if (confirm(`Are you sure you want to delete all ${reports.length} medical report(s) uploaded for "${user.name}"?`)) {
-      if (onUpdateRecords) {
-        onUpdateRecords(
-          medicalRecords.filter(
-            (r) =>
-              (r.patientMemberName && r.patientMemberName.toLowerCase() !== user.name.toLowerCase()) &&
-              r.patientMemberId !== user.id
-          )
-        );
-      }
-    }
+    setDeleteModalConfig({
+      isOpen: true,
+      title: 'Delete All User Reports',
+      itemType: 'Bulk Report Removal',
+      itemName: `All reports for ${user.name} (${reports.length} files)`,
+      message: `Are you sure you want to delete all ${reports.length} medical report(s) uploaded for "${user.name}"?`,
+      onConfirm: () => {
+        if (onUpdateRecords) {
+          onUpdateRecords(
+            medicalRecords.filter(
+              (r) =>
+                (r.patientMemberName && r.patientMemberName.toLowerCase() !== user.name.toLowerCase()) &&
+                r.patientMemberId !== user.id
+            )
+          );
+        }
+      },
+    });
   };
 
   const handleSaveAddUser = (e: React.FormEvent) => {
@@ -180,9 +215,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   const handleDeleteHospital = (hosp: AdminHospital) => {
-    alert(
-      `Unable to delete hospitals: Institutional network policy prevents deleting hospital records (${hosp.name}) to maintain statutory healthcare audit logs.\n\nTip: You can set the hospital status to 'Blocked' or 'Under Audit' to restrict access instead.`
-    );
+    setDeleteModalConfig({
+      isOpen: true,
+      title: 'Delete Hospital from Network',
+      itemType: 'Hospital Network',
+      itemName: `${hosp.name} (${hosp.city})`,
+      message: `Are you sure you want to permanently delete "${hosp.name}" from the hospital network directory?\n\nThis will remove the hospital from quote requests, profiles, and listings immediately.`,
+      onConfirm: () => {
+        onUpdateHospitals(hospitals.filter((h) => h.id !== hosp.id));
+      },
+    });
   };
 
   const handleSaveAddHospital = (e: React.FormEvent) => {
@@ -243,18 +285,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
         <div className="space-y-2">
           <h2 className="text-[24px] font-extrabold text-[#071e27]">Admin Desk Authorization Required</h2>
           <p className="text-[14px] text-[#434652] max-w-md mx-auto">
-            You are currently signed in as a patient profile. The System Control Panel is restricted strictly to the designated Super Admin mobile number.
+            You are currently not signed in with administrative access. The System Control Panel is restricted strictly to authorized Admin accounts.
           </p>
         </div>
 
         <div className="bg-[#f3faff] border border-[#003178]/20 rounded-2xl p-4 text-left space-y-2 font-mono-data text-[13px]">
           <div className="flex justify-between items-center">
-            <span className="text-[#434652]">Designated System Admin:</span>
-            <span className="font-extrabold text-[#003178]">+919246195689</span>
+            <span className="text-[#434652]">Designated Platform Admin:</span>
+            <span className="font-extrabold text-[#003178]">santoshgangapur@gmail.com</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-[#434652]">Current Signed In Number:</span>
-            <span className="font-bold text-[#071e27]">{authUser?.mobileNumber || 'Not Logged In'}</span>
+            <span className="text-[#434652]">Current Signed In Account:</span>
+            <span className="font-bold text-[#071e27]">{authUser?.email || 'Not Logged In'}</span>
           </div>
         </div>
 
@@ -263,8 +305,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
             onClick={onOpenAuthModal}
             className="px-6 py-3 bg-[#003178] hover:bg-[#002256] text-white font-extrabold text-[14px] rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
           >
-            <span className="material-symbols-outlined text-[18px]">smartphone</span>
-            <span>Sign In as Admin (+919246195689)</span>
+            <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+            <span>Sign In as Admin (santoshgangapur@gmail.com)</span>
           </button>
           <button
             onClick={() => onNavigate('dashboard')}
@@ -542,11 +584,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
       {activeTab === 'hospitals' && (
         <div className="space-y-6">
           {/* Hospital protection compliance note */}
-          <div className="p-3 bg-[#f8fafc] border border-slate-300 rounded-xl text-[12px] text-slate-700 flex items-center justify-between gap-3">
+          <div className="p-3.5 bg-[#f3faff] border border-[#003178]/20 rounded-xl text-[12px] text-[#003178] flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-amber-600 text-[20px]">shield</span>
+              <span className="material-symbols-outlined text-[#003178] text-[20px]">domain</span>
               <span>
-                <strong>Institutional Network Protection:</strong> Registered hospital units cannot be deleted from the database to comply with medical audit records. You can restrict access by setting status to <em>'Blocked'</em> or <em>'Under Audit'</em>.
+                <strong>Hospital Network Management:</strong> Add or edit partner hospital credentials, temporarily block access with <em>'Block'</em>, or permanently delete unverified units using <em>'Delete'</em>.
               </span>
             </div>
           </div>
@@ -658,11 +700,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteHospital(h)}
-                      className="px-2.5 py-1.5 text-[11px] font-bold bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-slate-200"
-                      title="Unable to delete hospitals - Click to view compliance note"
+                      className="px-2.5 py-1.5 text-[11px] font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Permanently delete hospital from directory"
                     >
-                      <span className="material-symbols-outlined text-[14px]">lock</span>
-                      <span>Delete Disabled</span>
+                      <span className="material-symbols-outlined text-[14px]">delete</span>
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>
@@ -997,6 +1039,21 @@ export const AdminView: React.FC<AdminViewProps> = ({
         onClose={() => setIsPlayStoreModalOpen(false)}
         authUser={authUser}
       />
+
+      {/* IN-APP CONFIRMATION MODAL FOR DELETING USERS, HOSPITALS, REPORTS */}
+      {deleteModalConfig && (
+        <ConfirmDeleteModal
+          isOpen={deleteModalConfig.isOpen}
+          title={deleteModalConfig.title}
+          itemType={deleteModalConfig.itemType}
+          itemName={deleteModalConfig.itemName}
+          message={deleteModalConfig.message}
+          confirmText="Yes, Delete Permanently"
+          cancelText="Cancel"
+          onConfirm={deleteModalConfig.onConfirm}
+          onClose={() => setDeleteModalConfig(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PatientProfile, HealthMetrics, SurgicalCase, MedicalRecord, Appointment, ViewMode, FamilyMember } from '../types';
 import { HospitalBroadcastStatusModal } from './HospitalBroadcastStatusModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface DashboardViewProps {
   patientProfile: PatientProfile;
@@ -16,6 +17,7 @@ interface DashboardViewProps {
   onSelectCase: (caseId: string) => void;
   onSelectRecord: (record: MedicalRecord) => void;
   onViewHospitalProfile?: (hospitalId: string) => void;
+  onDeleteCase?: (caseId: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -32,9 +34,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectCase,
   onSelectRecord,
   onViewHospitalProfile,
+  onDeleteCase,
 }) => {
   const [showAllCasesExpanded, setShowAllCasesExpanded] = useState(false);
   const [selectedCaseForDispatchModal, setSelectedCaseForDispatchModal] = useState<SurgicalCase | null>(null);
+  const [caseToDelete, setCaseToDelete] = useState<SurgicalCase | null>(null);
 
   const activeMember = familyMembers.find((m) => m.id === activeFamilyMemberId) || familyMembers[0];
   const displayedCases = showAllCasesExpanded ? activeCases : activeCases.slice(0, 2);
@@ -211,10 +215,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <button
                       onClick={() => setSelectedCaseForDispatchModal(singleCase)}
-                      className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[12px] font-bold rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-1 shadow-sm"
+                      className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[12px] font-bold rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[16px]">mark_email_read</span>
-                      <span>Hospital Email Log ({singleCase.hospitalDispatches?.length || 4})</span>
+                      <span>Email Log ({singleCase.hospitalDispatches?.length || 4})</span>
                     </button>
 
                     <button
@@ -222,11 +226,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onSelectCase(singleCase.id);
                         onNavigate('quotes');
                       }}
-                      className="px-4 py-2 bg-[#003178] text-white text-[13px] font-bold rounded-xl hover:bg-[#0d47a1] transition-all flex items-center gap-1.5 shadow-sm"
+                      className="px-4 py-2 bg-[#003178] text-white text-[13px] font-bold rounded-xl hover:bg-[#0d47a1] transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
                       <span>View Quotes Matrix</span>
                     </button>
+
+                    {onDeleteCase && (
+                      <button
+                        type="button"
+                        onClick={() => setCaseToDelete(singleCase)}
+                        className="px-2.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[12px] font-bold rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                        title="Delete this surgical case"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                        <span>Delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -604,6 +620,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           currentCase={selectedCaseForDispatchModal}
         />
       )}
+
+      {/* Confirm Delete Case Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!caseToDelete}
+        title="Delete Surgical Case"
+        itemType="Surgical Case"
+        itemName={caseToDelete ? `${caseToDelete.title} (${caseToDelete.caseCode})` : ''}
+        message="Are you sure you want to permanently delete this surgical case dossier? Associated hospital quotes, broadcast logs, and clinical AI analysis for this case will be removed."
+        confirmText="Yes, Delete Case"
+        cancelText="Keep Case"
+        onConfirm={() => {
+          if (caseToDelete && onDeleteCase) {
+            onDeleteCase(caseToDelete.id);
+          }
+          setCaseToDelete(null);
+        }}
+        onClose={() => setCaseToDelete(null)}
+      />
     </div>
   );
 };

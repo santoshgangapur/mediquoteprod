@@ -1,0 +1,357 @@
+{
+  "users": [
+    {
+      "id": "usr-admin-1",
+      "mobileNumber": "+919246195689",
+      "role": "admin",
+      "name": "Santosh Gangapur",
+      "email": "santoshgangapur@gmail.com",
+      "organizationName": "MediQuote AI Operations",
+      "registrationNo": "ADMIN-001",
+      "city": "Bangalore",
+      "status": "VERIFIED",
+      "createdAt": "2026-08-18T10:16:00.472Z",
+      "isPhoneVerified": true,
+      "emailVerified": true,
+      "authProvider": "email"
+    },
+    {
+      "id": "usr-patient-1",
+      "mobileNumber": "+919876543210",
+      "role": "patient",
+      "name": "Ramesh Kumar",
+      "email": "ramesh.k@gmail.com",
+      "city": "Hyderabad",
+      "status": "VERIFIED",
+      "createdAt": "2026-08-18T10:03:18.448Z"
+    },
+    {
+      "id": "usr-hospital-1",
+      "mobileNumber": "+919811122233",
+      "role": "hospital",
+      "name": "Apollo Hospital Admin",
+      "email": "desk@apollo.com",
+      "organizationName": "Apollo Hospitals Jubilee Hills",
+      "registrationNo": "NABH-HYD-882",
+      "city": "Hyderabad",
+      "status": "VERIFIED",
+      "createdAt": "2026-08-18T10:03:18.448Z"
+    },
+    {
+      "id": "usr-insurance-1",
+      "mobileNumber": "+919711188899",
+      "role": "insurance",
+      "name": "Star Health Desk",
+      "email": "claims@starhealth.in",
+      "organizationName": "Star Health & Allied Insurance Co.",
+      "registrationNo": "IRDAI-INS-042",
+      "city": "Mumbai",
+      "status": "VERIFIED",
+      "createdAt": "2026-08-18T10:03:18.448Z"
+    },
+    {
+      "id": "usr-finance-1",
+      "mobileNumber": "+919900011122",
+      "role": "finance",
+      "name": "Bajaj Health EMI Desk",
+      "email": "medical-emi@bajajfinserv.in",
+      "organizationName": "Bajaj Finserv Health Finance",
+      "registrationNo": "NBFC-FIN-991",
+      "city": "Pune",
+      "status": "VERIFIED",
+      "createdAt": "2026-08-18T10:03:18.448Z"
+    },
+    {
+      "id": "usr-g-1787048303233",
+      "email": "santoshgangapur@gmail.com",
+      "emailVerified": true,
+      "name": "Santosh Gangapur",
+      "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=Santosh%20Gangapur",
+      "role": "admin",
+      "mobileNumber": "",
+      "isPhoneVerified": false,
+      "authProvider": "google",
+      "city": "Bangalore",
+      "organizationName": "",
+      "registrationNo": "",
+      "status": "VERIFIED",
+      "createdAt": "2026-08-18T10:18:23.233Z"
+    }
+  ],
+  "hospitals": [
+    {
+      "id": "hosp-1",
+      "name": "Apollo Hospitals Jubilee Hills",
+      "city": "Hyderabad",
+      "address": "Road No 72, Film Nagar, Jubilee Hills",
+      "accreditation": "NABH & JCI Accredited",
+      "rating": 4.9,
+      "bedCapacity": 750,
+      "icuBeds": 120,
+      "specialties": [
+        "Cardiology",
+        "Orthopedics",
+        "Oncology",
+        "Neurosurgery",
+        "Organ Transplant"
+      ],
+      "contactPhone": "+914023607777",
+      "verified": true,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hosp-2",
+      "name": "Max Super Speciality Hospital",
+      "city": "New Delhi",
+      "address": "1, 2, Press Enclave Marg, Saket",
+      "accreditation": "NABH Accredited",
+      "rating": 4.8,
+      "bedCapacity": 550,
+      "icuBeds": 90,
+      "specialties": [
+        "Cardiology",
+        "Spine Surgery",
+        "Joint Replacement",
+        "Urology"
+      ],
+      "contactPhone": "+911126515050",
+      "verified": true,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hosp-3",
+      "name": "Fortis Hospital Cunningham Road",
+      "city": "Bangalore",
+      "address": "14, Cunningham Rd, Vasanth Nagar",
+      "accreditation": "NABH Accredited",
+      "rating": 4.7,
+      "bedCapacity": 400,
+      "icuBeds": 70,
+      "specialties": [
+        "Gastroenterology",
+        "Nephrology",
+        "Oncology",
+        "Urology"
+      ],
+      "contactPhone": "+918041994444",
+      "verified": true,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hosp-4",
+      "name": "Manipal Hospital Old Airport Road",
+      "city": "Bangalore",
+      "address": "98, HAL Old Airport Rd, Kodihalli",
+      "accreditation": "JCI & NABH Accredited",
+      "rating": 4.9,
+      "bedCapacity": 600,
+      "icuBeds": 110,
+      "specialties": [
+        "IVF & Fertility",
+        "Organ Transplant",
+        "Oncology",
+        "Cardiology"
+      ],
+      "contactPhone": "+918025024444",
+      "verified": true,
+      "status": "ACTIVE"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-1",
+      "name": "Cardiology & Cardiac Surgery",
+      "icon": "favorite",
+      "count": 24,
+      "desc": "Angioplasty, CABG bypass, Pacemaker insertion"
+    },
+    {
+      "id": "cat-2",
+      "name": "Orthopedics & Joint Replacement",
+      "icon": "bone",
+      "count": 18,
+      "desc": "Total Knee Replacement, Hip Replacement, Arthroscopy"
+    },
+    {
+      "id": "cat-3",
+      "name": "Oncology & Cancer Care",
+      "icon": "medical_services",
+      "count": 32,
+      "desc": "Chemotherapy, Radiation, Tumor Mastectomy, Immunotherapy"
+    },
+    {
+      "id": "cat-4",
+      "name": "Neurology & Neurosurgery",
+      "icon": "psychology",
+      "count": 15,
+      "desc": "Spine Microdiscectomy, Brain Tumor Surgery, DBS"
+    },
+    {
+      "id": "cat-5",
+      "name": "Gastroenterology & Hepatology",
+      "icon": "digestive",
+      "count": 21,
+      "desc": "Endoscopy, Gallbladder Cholecystectomy, Liver Care"
+    },
+    {
+      "id": "cat-6",
+      "name": "Urology & Nephrology",
+      "icon": "water_drop",
+      "count": 19,
+      "desc": "Laser Kidney Stone RIRC, Dialysis, Prostate Laser"
+    },
+    {
+      "id": "cat-7",
+      "name": "IVF & Fertility Treatment",
+      "icon": "child_care",
+      "count": 14,
+      "desc": "ICSI Fertility Cycle, Blastocyst Transfer, Egg Freezing"
+    },
+    {
+      "id": "cat-8",
+      "name": "Spine & Pain Management",
+      "icon": "accessibility_new",
+      "count": 16,
+      "desc": "Lumbar Disc Fusion, Cervical Spine, Kyphoplasty"
+    }
+  ],
+  "diseases": [
+    {
+      "id": "dis-1",
+      "name": "Coronary Artery Disease (Angioplasty / CABG)",
+      "categoryId": "cat-1",
+      "icdCode": "I25.10",
+      "riskLevel": "HIGH",
+      "avgCostMin": 180000,
+      "avgCostMax": 350000,
+      "recoveryDays": 14
+    },
+    {
+      "id": "dis-2",
+      "name": "Severe Knee Osteoarthritis (Total Knee Replacement)",
+      "categoryId": "cat-2",
+      "icdCode": "M17.11",
+      "riskLevel": "MODERATE",
+      "avgCostMin": 140000,
+      "avgCostMax": 260000,
+      "recoveryDays": 21
+    },
+    {
+      "id": "dis-3",
+      "name": "Lumbar Herniated Disc (Microdiscectomy)",
+      "categoryId": "cat-4",
+      "icdCode": "M51.26",
+      "riskLevel": "MODERATE",
+      "avgCostMin": 120000,
+      "avgCostMax": 220000,
+      "recoveryDays": 10
+    },
+    {
+      "id": "dis-4",
+      "name": "Cataract (Phacoemulsification + Premium IOL)",
+      "categoryId": "cat-8",
+      "icdCode": "H25.9",
+      "riskLevel": "LOW",
+      "avgCostMin": 35000,
+      "avgCostMax": 85000,
+      "recoveryDays": 3
+    },
+    {
+      "id": "dis-5",
+      "name": "Renal Calculi / Kidney Stones (Laser RIRC / PCNL)",
+      "categoryId": "cat-6",
+      "icdCode": "N20.0",
+      "riskLevel": "LOW",
+      "avgCostMin": 55000,
+      "avgCostMax": 110000,
+      "recoveryDays": 5
+    },
+    {
+      "id": "dis-6",
+      "name": "Symptomatic Gallstones (Laparoscopic Cholecystectomy)",
+      "categoryId": "cat-5",
+      "icdCode": "K80.20",
+      "riskLevel": "LOW",
+      "avgCostMin": 65000,
+      "avgCostMax": 130000,
+      "recoveryDays": 7
+    },
+    {
+      "id": "dis-7",
+      "name": "Breast Cancer (Mastectomy & Chemotherapy Protocol)",
+      "categoryId": "cat-3",
+      "icdCode": "C50.91",
+      "riskLevel": "HIGH",
+      "avgCostMin": 220000,
+      "avgCostMax": 500000,
+      "recoveryDays": 30
+    }
+  ],
+  "vault_documents": [
+    {
+      "id": "doc-vault-101",
+      "userId": "+919246195689",
+      "title": "Cardiac MRI & Echocardiogram Clinical Report",
+      "category": "SCAN_MRI",
+      "fileName": "Cardiac_Echo_Report_2026.pdf",
+      "fileSize": "3.4 MB",
+      "uploadDate": "2026-08-01T10:15:00Z",
+      "sha256Hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "encryptionProtocol": "256-BIT AES-GCM",
+      "abdmComplianceSeal": true,
+      "isLocked": false,
+      "hipaaAuditTrail": [
+        {
+          "timestamp": "2026-08-01T10:15:00Z",
+          "action": "UPLOADED_AND_ENCRYPTED",
+          "actor": "Patient Owner (+919246195689)"
+        },
+        {
+          "timestamp": "2026-08-02T14:30:00Z",
+          "action": "ACCESSED_BY_HOSPITAL_DOCTOR",
+          "actor": "Apollo Hospital Cardiac Desk"
+        }
+      ]
+    },
+    {
+      "id": "doc-vault-102",
+      "userId": "+919246195689",
+      "title": "Hospital Discharge Summary & Treatment Plan",
+      "category": "DISCHARGE_SUMMARY",
+      "fileName": "Discharge_Summary_Apollo.pdf",
+      "fileSize": "1.8 MB",
+      "uploadDate": "2026-07-28T09:00:00Z",
+      "sha256Hash": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+      "encryptionProtocol": "256-BIT AES-GCM",
+      "abdmComplianceSeal": true,
+      "isLocked": false,
+      "hipaaAuditTrail": [
+        {
+          "timestamp": "2026-07-28T09:00:00Z",
+          "action": "UPLOADED_AND_ENCRYPTED",
+          "actor": "Patient Owner (+919246195689)"
+        }
+      ]
+    },
+    {
+      "id": "doc-vault-103",
+      "userId": "+919246195689",
+      "title": "Star Health Cashless Pre-Authorization Approval",
+      "category": "BILL_RECEIPT",
+      "fileName": "StarHealth_Approval_Letter.pdf",
+      "fileSize": "840 KB",
+      "uploadDate": "2026-08-03T16:45:00Z",
+      "sha256Hash": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
+      "encryptionProtocol": "256-BIT AES-GCM",
+      "abdmComplianceSeal": true,
+      "isLocked": false,
+      "hipaaAuditTrail": [
+        {
+          "timestamp": "2026-08-03T16:45:00Z",
+          "action": "UPLOADED_AND_ENCRYPTED",
+          "actor": "Star Health TPA Desk"
+        }
+      ]
+    }
+  ]
+}

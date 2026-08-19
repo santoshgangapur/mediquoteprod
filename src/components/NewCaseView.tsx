@@ -3,25 +3,32 @@ import { SurgicalCase, MedicalRecord, ViewMode, PatientVitals, FamilyMember, Hos
 import { generateAIClinicalRecommendation } from '../utils/aiClinicalEngine';
 import { validateMedicalFiles } from '../utils/contentModeration';
 import { MedicalDocumentUploader, QueuedMedicalFile } from './MedicalDocumentUploader';
+import { initialFamilyMembers } from '../data/mockData';
 
 interface NewCaseViewProps {
-  existingRecords: MedicalRecord[];
+  existingRecords?: MedicalRecord[];
   familyMembers?: FamilyMember[];
-  onAddRecords: (recs: MedicalRecord[]) => void;
+  activeFamilyMemberId?: string;
+  onSelectFamilyMember?: (id: string) => void;
+  onAddRecords?: (recs: MedicalRecord[]) => void;
   onCreateCase: (newCase: SurgicalCase) => void;
   onNavigate: (view: ViewMode) => void;
 }
 
 export const NewCaseView: React.FC<NewCaseViewProps> = ({
-  existingRecords,
+  existingRecords = [],
   familyMembers = [],
+  activeFamilyMemberId,
+  onSelectFamilyMember,
   onAddRecords,
   onCreateCase,
   onNavigate,
 }) => {
   // Case Title & Family Member Selection
   const [caseTitle, setCaseTitle] = useState('Gallbladder Surgery Quotation Request');
-  const [selectedMemberId, setSelectedMemberId] = useState<string>(familyMembers[0]?.id || 'fam-1');
+  const [selectedMemberId, setSelectedMemberId] = useState<string>(
+    activeFamilyMemberId || familyMembers[0]?.id || 'fam-1'
+  );
 
   // Procedure & Symptoms Fields
   const [procedureTitle, setProcedureTitle] = useState('Laparoscopic Cholecystectomy');
@@ -64,7 +71,7 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
 
   // Attached files
   const [attachedRecordIds, setAttachedRecordIds] = useState<string[]>(
-    existingRecords.map((r) => r.id).slice(0, 2)
+    (existingRecords || []).map((r) => r.id).slice(0, 2)
   );
   const [uploadedNewFiles, setUploadedNewFiles] = useState<{ name: string; size: string; category: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -124,7 +131,7 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
         patientMemberName: selectedMemberName,
       }));
 
-      onAddRecords(newRecs);
+      onAddRecords?.(newRecs);
       setAttachedRecordIds((prev) => [...prev, ...newRecs.map((r) => r.id)]);
       setUploadedNewFiles((prev) => [
         ...prev,
@@ -365,7 +372,10 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
               </label>
               <select
                 value={selectedMemberId}
-                onChange={(e) => setSelectedMemberId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedMemberId(e.target.value);
+                  onSelectFamilyMember?.(e.target.value);
+                }}
                 className="w-full px-4 py-2.5 rounded-xl border border-[#c3c6d4] text-[14px] font-medium focus:outline-none focus:border-[#003178] bg-[#f8fafc]"
               >
                 {familyMembers.map((m) => (
@@ -400,17 +410,7 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
 
           {/* Shared Unified Medical Document Uploader Control */}
           <MedicalDocumentUploader
-            familyMembers={
-              familyMembers.length > 0
-                ? familyMembers
-                : [
-                    { id: 'fam-1', fullName: 'Arjun Mehta', relationship: 'Self (Primary)' },
-                    { id: 'fam-2', fullName: 'Priya Mehta', relationship: 'Spouse' },
-                    { id: 'fam-3', fullName: 'Ramesh Mehta', relationship: 'Father' },
-                    { id: 'fam-4', fullName: 'Sunita Mehta', relationship: 'Mother' },
-                    { id: 'fam-5', fullName: 'Aarav Mehta', relationship: 'Son' }
-                  ]
-            }
+            familyMembers={familyMembers && familyMembers.length > 0 ? familyMembers : initialFamilyMembers}
             selectedMemberId={selectedMemberId}
             onMemberChange={(memId) => setSelectedMemberId(memId)}
             submitButtonText="Attach & Process Scans for Case"
@@ -434,7 +434,7 @@ export const NewCaseView: React.FC<NewCaseViewProps> = ({
                 };
               });
 
-              onAddRecords(newRecs);
+              onAddRecords?.(newRecs);
               setAttachedRecordIds((prev) => [...prev, ...newRecs.map((r) => r.id)]);
               setUploadedNewFiles((prev) => [
                 ...prev,

@@ -31,11 +31,11 @@ export const initialPersonas: UserPersona[] = [
   },
   {
     id: 'app_admin',
-    name: 'Vikramaditya Sen',
-    roleTitle: 'MediQuote System Super Admin',
-    email: 'admin@mediquote.ai',
-    badgeText: 'APP ADMIN',
-    description: 'Global system administrator with full access to hospital empanelments, TPA audit logs, platform analytics, and user access control.',
+    name: 'Santosh Gangapur',
+    roleTitle: 'MediQuote Platform Administrator',
+    email: 'santoshgangapur@gmail.com',
+    badgeText: 'ADMIN',
+    description: 'Platform administrator with full management over hospital empanelments, TPA audit logs, platform analytics, and user access control.',
     allowedViews: ['dashboard', 'new-case', 'cases', 'family', 'quotes', 'records', 'hospitals', 'hospital-profile', 'checkout', 'recommendations', 'upload', 'account', 'doctor-portal', 'admin', 'medical-tourism'],
   },
 ];
@@ -1244,12 +1244,12 @@ export const detailedHospitalsList: DetailedHospitalProfile[] = [
 
 export const initialAdminUsers: AdminUser[] = [
   {
-    id: 'usr-admin-super',
-    name: 'Super Admin (+919246195689)',
-    email: 'admin@mediquote.ai',
-    role: 'System Admin',
+    id: 'usr-admin-1',
+    name: 'Santosh Gangapur',
+    email: 'santoshgangapur@gmail.com',
+    role: 'Admin',
     status: 'Active',
-    joinedDate: 'Production Active',
+    joinedDate: '15 Jan 2024',
     casesSubmitted: 156
   },
   {

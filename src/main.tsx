@@ -12,8 +12,8 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public override state: ErrorBoundaryState = {
     hasError: false,
     error: null,
   };
@@ -22,11 +22,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error in React render:', error, errorInfo);
   }
 
-  public render() {
+  public override render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#f3faff] flex items-center justify-center p-6 text-[#071e27] font-sans">
@@ -40,7 +40,12 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             </p>
             <button
               onClick={() => {
-                window.location.href = '/';
+                this.setState({ hasError: false, error: null });
+                try {
+                  window.location.reload();
+                } catch {
+                  window.location.href = '/';
+                }
               }}
               className="w-full py-3 bg-[#003178] hover:bg-[#002256] text-white font-extrabold text-[14px] rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
             >
@@ -52,7 +57,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
-    return (this as any).props?.children || null;
+    return this.props.children;
   }
 }
 

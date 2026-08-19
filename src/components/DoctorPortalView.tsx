@@ -176,7 +176,7 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
     )
   );
 
-  const moreInfoCases = cases.filter((c) => c.status === 'MORE_INFO_NEEDED');
+  const moreInfoCases = cases.filter((c) => (c.status as string) === 'MORE_INFO_NEEDED');
 
   const displayedCases =
     activeTab === 'all'
@@ -347,7 +347,7 @@ export const DoctorPortalView: React.FC<DoctorPortalViewProps> = ({
             <button
               type="button"
               onClick={() => {
-                const matched = cases.find((c) => c.code === verifiedPass.caseCode);
+                const matched = cases.find((c) => c.caseCode === verifiedPass.caseCode);
                 if (matched) setScanInspectorCase(matched);
               }}
               className="px-3 py-1.5 bg-[#003178] text-white text-[11px] font-bold rounded-lg hover:bg-[#002256] shrink-0"

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { HospitalQuote, SurgicalCase, FinancingOption } from '../types';
+import { HospitalQuote, SurgicalCase, FinancingOption, AuthUser } from '../types';
 import { defaultFinancingOptions } from '../data/mockData';
 
 interface CheckoutViewProps {
-  selectedHospital: HospitalQuote;
-  currentCase: SurgicalCase;
+  selectedHospital?: HospitalQuote | null;
+  currentCase?: SurgicalCase | null;
   onConfirmBooking: (selectedFinancing: FinancingOption) => void;
   onBackToQuotes: () => void;
+  authUser?: AuthUser | null;
+  onOpenPhoneVerification?: () => void;
 }
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({
@@ -14,10 +16,30 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   currentCase,
   onConfirmBooking,
   onBackToQuotes,
+  authUser,
+  onOpenPhoneVerification,
 }) => {
   const [selectedFinancing, setSelectedFinancing] = useState<FinancingOption>(defaultFinancingOptions[0]);
   const [linkedInsurance, setLinkedInsurance] = useState<string>('HDFC Optima Restore (HDFC-OPT-992014)');
   const [isLinkingNewInsurance, setIsLinkingNewInsurance] = useState(false);
+
+  if (!selectedHospital || !currentCase) {
+    return (
+      <div className="bg-white rounded-2xl border border-[#c3c6d4] p-8 text-center space-y-4 max-w-lg mx-auto my-12">
+        <div className="w-16 h-16 bg-[#dbf1fe] text-[#003178] rounded-2xl flex items-center justify-center mx-auto">
+          <span className="material-symbols-outlined text-[32px]">shopping_cart</span>
+        </div>
+        <h2 className="text-[20px] font-bold text-[#071e27]">No Hospital Selected for Checkout</h2>
+        <p className="text-[14px] text-[#434652]">Please choose a hospital quotation to proceed with consultation scheduling and cashless claim processing.</p>
+        <button
+          onClick={onBackToQuotes}
+          className="px-6 py-2.5 bg-[#003178] text-white font-bold rounded-xl cursor-pointer hover:bg-[#002256] transition-all"
+        >
+          View Hospital Quotes
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200 pb-16">
@@ -56,7 +78,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Hospital Summary, Insurance, Financing (Col 1-7) */}
+        {/* Left Column: Hospital Summary, Patient Contact, Insurance, Financing (Col 1-7) */}
         <div className="lg:col-span-7 space-y-6">
           {/* Selected Hospital Summary Card */}
           <div className="bg-white rounded-2xl border border-[#c3c6d4] p-6 shadow-sm space-y-4">
@@ -82,7 +104,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
               </div>
               <button
                 onClick={onBackToQuotes}
-                className="text-[12px] font-bold text-[#003178] hover:underline shrink-0"
+                className="text-[12px] font-bold text-[#003178] hover:underline shrink-0 cursor-pointer"
               >
                 Change Provider
               </button>
@@ -97,6 +119,59 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 <span className="text-[11px] font-bold text-[#737783] uppercase block">LEAD SURGEON</span>
                 <span className="font-bold text-[#071e27]">{selectedHospital.doctorName}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Hospital Contact & Mobile Verification Status */}
+          <div className="bg-white rounded-2xl border border-[#c3c6d4] p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-[#c3c6d4]/60 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#003178]">phone_in_talk</span>
+                <h3 className="font-bold text-[16px] text-[#071e27]">Hospital Patient Coordination Contact</h3>
+              </div>
+              {authUser?.isPhoneVerified && authUser.mobileNumber ? (
+                <span className="text-[12px] font-bold text-[#006f66] bg-[#81f3e5] px-2.5 py-0.5 rounded flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">verified</span>
+                  <span>Verified Mobile</span>
+                </span>
+              ) : (
+                <span className="text-[12px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">info</span>
+                  <span>Action Required</span>
+                </span>
+              )}
+            </div>
+
+            <div className="p-4 bg-[#f8fafc] border border-[#c3c6d4] rounded-xl flex items-center justify-between">
+              <div>
+                <p className="font-extrabold text-[14px] text-[#071e27] flex items-center gap-2">
+                  <span>{authUser?.name || 'Patient'}</span>
+                  {authUser?.email && <span className="text-[12px] text-slate-500">({authUser.email})</span>}
+                </p>
+                <p className="text-[13px] text-[#434652] mt-0.5 font-mono-data">
+                  {authUser?.isPhoneVerified && authUser?.mobileNumber ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[15px]">phone_android</span>
+                      <span>{authUser.mobileNumber}</span>
+                    </span>
+                  ) : (
+                    <span className="text-amber-700 font-medium">
+                      📱 No verified phone number linked yet for hospital quotation calls.
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {(!authUser?.isPhoneVerified || !authUser?.mobileNumber) && onOpenPhoneVerification && (
+                <button
+                  type="button"
+                  onClick={onOpenPhoneVerification}
+                  className="px-4 py-2 bg-[#003178] hover:bg-[#002256] text-white font-bold text-[12px] rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                  <span>Verify Phone Now</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -119,7 +194,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
               </div>
               <button
                 onClick={() => setIsLinkingNewInsurance(!isLinkingNewInsurance)}
-                className="text-[12px] font-bold text-[#003178] hover:underline"
+                className="text-[12px] font-bold text-[#003178] hover:underline cursor-pointer"
               >
                 Update Policy
               </button>
@@ -249,7 +324,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
             {/* Confirm & Pay CTA */}
             <button
               onClick={() => onConfirmBooking(selectedFinancing)}
-              className="w-full py-3.5 bg-[#003178] text-white font-bold text-[16px] rounded-xl hover:bg-[#0d47a1] transition-all shadow-lg active:scale-[0.99] flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-[#003178] text-white font-bold text-[16px] rounded-xl hover:bg-[#0d47a1] transition-all shadow-lg active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px]">lock</span>
               <span>Confirm & Reserve Slot</span>

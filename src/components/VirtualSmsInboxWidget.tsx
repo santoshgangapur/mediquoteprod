@@ -59,11 +59,13 @@ export const VirtualSmsInboxWidget: React.FC<VirtualSmsInboxWidgetProps> = ({ on
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#81f3e5] text-[#003178] flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-[18px]">smartphone</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  {latestSms.mobileNumber.includes('@') ? 'mark_email_read' : 'smartphone'}
+                </span>
               </div>
               <div>
                 <span className="text-[10px] font-mono-data uppercase tracking-wider text-[#81f3e5] block font-bold">
-                  Free Live SMS Receiver
+                  {latestSms.mobileNumber.includes('@') ? 'Live Gmail / Email Code Receiver' : 'Live SMS Code Receiver'}
                 </span>
                 <span className="text-[13px] font-extrabold font-mono-data">{latestSms.mobileNumber}</span>
               </div>
@@ -121,8 +123,8 @@ export const VirtualSmsInboxWidget: React.FC<VirtualSmsInboxWidgetProps> = ({ on
           }}
           className="text-[13px] font-extrabold flex items-center gap-2 cursor-pointer"
         >
-          <span className="material-symbols-outlined text-[18px] text-[#81f3e5]">sms</span>
-          <span>Live Free SMS Receiver</span>
+          <span className="material-symbols-outlined text-[18px] text-[#81f3e5]">mark_email_read</span>
+          <span>Live Code Receiver</span>
           <span className="w-5 h-5 rounded-full bg-[#81f3e5] text-[#003178] text-[10px] font-extrabold flex items-center justify-center">
             {smsHistory.length}
           </span>
@@ -134,7 +136,7 @@ export const VirtualSmsInboxWidget: React.FC<VirtualSmsInboxWidgetProps> = ({ on
             setShowNotification(false);
           }}
           className="p-1 text-[#81f3e5] hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer ml-1"
-          title="Dismiss Live SMS Receiver"
+          title="Dismiss Live Code Receiver"
         >
           <span className="material-symbols-outlined text-[16px]">close</span>
         </button>

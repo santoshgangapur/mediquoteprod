@@ -1,23 +1,39 @@
 import React, { useState } from 'react';
 import { FamilyMember, SurgicalCase, ViewMode } from '../types';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface FamilyProfilesViewProps {
   familyMembers: FamilyMember[];
-  cases: SurgicalCase[];
-  onAddFamilyMember: (newMember: FamilyMember) => void;
-  onSelectMemberForNewCase: (member: FamilyMember) => void;
+  cases?: SurgicalCase[];
+  activeMemberId?: string;
+  onSelectMember?: (id: string) => void;
+  onAddMember?: (newMember: FamilyMember) => void;
+  onUpdateMember?: (updatedMember: FamilyMember) => void;
+  onDeleteMember?: (memberId: string) => void;
+  onAddFamilyMember?: (newMember: FamilyMember) => void;
+  onDeleteFamilyMember?: (memberId: string) => void;
+  onSelectMemberForNewCase?: (member: FamilyMember) => void;
   onNavigate: (view: ViewMode) => void;
 }
 
 export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
   familyMembers,
-  cases,
+  cases = [],
+  activeMemberId,
+  onSelectMember,
+  onAddMember,
+  onUpdateMember,
+  onDeleteMember,
   onAddFamilyMember,
+  onDeleteFamilyMember,
   onSelectMemberForNewCase,
   onNavigate,
 }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [activeTabMemberId, setActiveTabMemberId] = useState<string>('all');
+  const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<FamilyMember | null>(null);
+  const [cannotDeleteNotice, setCannotDeleteNotice] = useState<string | null>(null);
+  const [activeTabMemberId, setActiveTabMemberId] = useState<string>(activeMemberId || 'all');
 
   // Form State for New Member
   const [fullName, setFullName] = useState('');
@@ -28,6 +44,85 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
   const [conditionsText, setConditionsText] = useState('');
   const [allergiesText, setAllergiesText] = useState('');
   const [insurancePolicy, setInsurancePolicy] = useState('HDFC-OPT-992014-DEP');
+
+  // Form State for Edit Member
+  const [editFullName, setEditFullName] = useState('');
+  const [editRelationship, setEditRelationship] = useState<FamilyMember['relationship']>('Spouse');
+  const [editAge, setEditAge] = useState<number>(35);
+  const [editGender, setEditGender] = useState<'Male' | 'Female' | 'Other'>('Female');
+  const [editBloodGroup, setEditBloodGroup] = useState('O+');
+  const [editConditionsText, setEditConditionsText] = useState('');
+  const [editAllergiesText, setEditAllergiesText] = useState('');
+  const [editInsurancePolicy, setEditInsurancePolicy] = useState('');
+
+  const handleOpenEdit = (member: FamilyMember) => {
+    setEditingMember(member);
+    setEditFullName(member.fullName);
+    setEditRelationship(member.relationship);
+    setEditAge(member.age || 30);
+    setEditGender((member.gender as any) || 'Female');
+    setEditBloodGroup(member.bloodGroup || 'O+');
+    setEditConditionsText((member.preExistingConditions || []).join(', '));
+    setEditAllergiesText((member.allergies || []).join(', '));
+    setEditInsurancePolicy(member.insurancePolicyNumber || '');
+  };
+
+  const handleSaveEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember || !editFullName.trim()) return;
+
+    const updated: FamilyMember = {
+      ...editingMember,
+      fullName: editFullName.trim(),
+      relationship: editRelationship,
+      age: Number(editAge) || 30,
+      gender: editGender,
+      bloodGroup: editBloodGroup,
+      preExistingConditions: editConditionsText
+        ? editConditionsText.split(',').map((s) => s.trim()).filter(Boolean)
+        : ['None Reported'],
+      allergies: editAllergiesText
+        ? editAllergiesText.split(',').map((s) => s.trim()).filter(Boolean)
+        : ['None'],
+      insurancePolicyNumber: editInsurancePolicy.trim() || 'HDFC-OPT-992014',
+    };
+
+    if (onUpdateMember) {
+      onUpdateMember(updated);
+    }
+    setEditingMember(null);
+  };
+
+  const handleDeleteMemberClick = (member: FamilyMember) => {
+    const isPrimary =
+      member.relationship.toLowerCase().includes('self') ||
+      member.relationship.toLowerCase().includes('primary');
+
+    if (isPrimary && familyMembers.length <= 1) {
+      setCannotDeleteNotice(
+        `Cannot delete primary account holder profile (${member.fullName}). You can edit this profile details instead.`
+      );
+      return;
+    }
+
+    setMemberToDelete(member);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!memberToDelete) return;
+    const targetId = memberToDelete.id;
+
+    if (onDeleteMember) {
+      onDeleteMember(targetId);
+    } else if (onDeleteFamilyMember) {
+      onDeleteFamilyMember(targetId);
+    }
+
+    if (activeTabMemberId === targetId) {
+      setActiveTabMemberId('all');
+    }
+    setMemberToDelete(null);
+  };
 
   const handleCreateMemberSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,14 +135,22 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
       age: Number(age) || 30,
       gender,
       bloodGroup,
-      preExistingConditions: conditionsText ? conditionsText.split(',').map((s) => s.trim()) : ['None Reported'],
-      allergies: allergiesText ? allergiesText.split(',').map((s) => s.trim()) : ['None'],
+      preExistingConditions: conditionsText
+        ? conditionsText.split(',').map((s) => s.trim()).filter(Boolean)
+        : ['None Reported'],
+      allergies: allergiesText
+        ? allergiesText.split(',').map((s) => s.trim()).filter(Boolean)
+        : ['None'],
       activeCasesCount: 0,
       avatarColor: 'bg-teal-700',
       insurancePolicyNumber: insurancePolicy || 'HDFC-OPT-992014',
     };
 
-    onAddFamilyMember(newMem);
+    if (onAddMember) {
+      onAddMember(newMem);
+    } else if (onAddFamilyMember) {
+      onAddFamilyMember(newMem);
+    }
     setIsAddModalOpen(false);
 
     // Reset Form
@@ -160,24 +263,50 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
               </div>
 
               {/* Status & Action */}
-              <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#c3c6d4]/60 gap-3 shrink-0">
-                {activeCaseCount > 0 ? (
-                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-300 font-mono-data">
-                    {activeCaseCount} Active Surgical Case
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[11px] font-bold rounded border">
-                    No Active Case
-                  </span>
-                )}
+              <div className="flex flex-col sm:flex-row md:flex-col items-start sm:items-center md:items-end justify-between w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#c3c6d4]/60 gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  {activeCaseCount > 0 ? (
+                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full border border-emerald-300 font-mono-data">
+                      {activeCaseCount} Active Surgical Case
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[11px] font-bold rounded border">
+                      No Active Case
+                    </span>
+                  )}
+                </div>
 
-                <button
-                  onClick={() => onSelectMemberForNewCase(member)}
-                  className="px-4 py-2 bg-[#003178] text-white font-bold text-[12px] rounded-xl hover:bg-[#0d47a1] transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add_notes</span>
-                  <span>Start Surgical Case</span>
-                </button>
+                <div className="flex items-center flex-wrap gap-2">
+                  {/* Start Surgical Case Button */}
+                  <button
+                    onClick={() => onSelectMemberForNewCase && onSelectMemberForNewCase(member)}
+                    className="px-3.5 py-2 bg-[#003178] text-white font-bold text-[12px] rounded-xl hover:bg-[#0d47a1] transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    title="Start quotation request for this family member"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add_notes</span>
+                    <span>Start Case</span>
+                  </button>
+
+                  {/* Edit Profile Button */}
+                  <button
+                    onClick={() => handleOpenEdit(member)}
+                    className="px-2.5 py-2 bg-slate-100 text-[#003178] hover:bg-slate-200 border border-slate-300 text-[12px] font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                    title="Edit vitals, conditions, and insurance for this member"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                    <span>Edit</span>
+                  </button>
+
+                  {/* Delete Member Button */}
+                  <button
+                    onClick={() => handleDeleteMemberClick(member)}
+                    className="px-2.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[12px] font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                    title="Delete this family dependent profile"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    <span>Delete</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -404,18 +533,224 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border rounded-xl text-[#434652] font-bold"
+                  className="px-4 py-2 border rounded-xl text-[#434652] font-bold cursor-pointer hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#003178] text-white font-bold rounded-xl hover:bg-[#0d47a1]"
+                  className="px-5 py-2 bg-[#003178] text-white font-bold rounded-xl hover:bg-[#0d47a1] cursor-pointer shadow-sm"
                 >
                   Save Profile
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT FAMILY MEMBER PROFILE */}
+      {editingMember && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#c3c6d4]/60 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#003178] text-[24px]">manage_accounts</span>
+                <h3 className="text-[18px] font-bold text-[#003178]">
+                  Edit Profile: {editingMember.fullName}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMember(null)}
+                className="text-gray-400 hover:text-gray-700 cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditSubmit} className="space-y-4 text-[13px]">
+              <div>
+                <label className="block font-bold mb-1 text-[#003178]">Full Legal Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-[#003178]">Relationship</label>
+                  <select
+                    value={editRelationship}
+                    onChange={(e) => setEditRelationship(e.target.value as any)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                  >
+                    <option value="Self (Primary)">Self (Primary)</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Son">Son</option>
+                    <option value="Daughter">Daughter</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-[#003178]">Age (Years)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={editAge}
+                    onChange={(e) => setEditAge(Number(e.target.value))}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold mb-1 text-[#003178]">Gender</label>
+                  <select
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value as any)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                  >
+                    <option value="Female">Female</option>
+                    <option value="Male">Male</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold mb-1 text-[#003178]">Blood Group</label>
+                  <select
+                    value={editBloodGroup}
+                    onChange={(e) => setEditBloodGroup(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                  >
+                    <option value="O+">O+</option>
+                    <option value="A+">A+</option>
+                    <option value="B+">B+</option>
+                    <option value="AB+">AB+</option>
+                    <option value="O-">O-</option>
+                    <option value="A-">A-</option>
+                    <option value="B-">B-</option>
+                    <option value="AB-">AB-</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-[#003178]">Pre-Existing Health Conditions</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Hypertension, Diabetes (comma separated)"
+                  value={editConditionsText}
+                  onChange={(e) => setEditConditionsText(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-[#003178]">Known Drug / Food Allergies</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Penicillin, Sulfa, Dust Mites"
+                  value={editAllergiesText}
+                  onChange={(e) => setEditAllergiesText(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold mb-1 text-[#003178]">Insurance Dependent Member ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. HDFC-OPT-992014-DEP1"
+                  value={editInsurancePolicy}
+                  onChange={(e) => setEditInsurancePolicy(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#c3c6d4] focus:outline-none focus:border-[#003178]"
+                />
+              </div>
+
+              <div className="pt-3 border-t flex justify-between items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingMember(null);
+                    handleDeleteMemberClick(editingMember);
+                  }}
+                  className="px-3.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  <span>Delete Member</span>
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMember(null)}
+                    className="px-4 py-2 border rounded-xl text-[#434652] font-bold cursor-pointer hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#003178] text-white font-bold rounded-xl hover:bg-[#0d47a1] cursor-pointer shadow-sm"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* IN-APP CONFIRMATION MODAL FOR DELETING PATIENT / FAMILY MEMBER */}
+      <ConfirmDeleteModal
+        isOpen={!!memberToDelete}
+        title="Delete Patient Profile"
+        itemType="Family Member"
+        itemName={memberToDelete ? `${memberToDelete.fullName} (${memberToDelete.relationship})` : ''}
+        message={
+          memberToDelete
+            ? `Are you sure you want to permanently remove ${memberToDelete.fullName} from your family health profiles? All assigned vitals and medical preferences for this dependent will be unlinked.`
+            : ''
+        }
+        confirmText="Yes, Delete Member"
+        cancelText="Keep Member"
+        onConfirm={handleConfirmDelete}
+        onClose={() => setMemberToDelete(null)}
+      />
+
+      {/* CANNOT DELETE PRIMARY PROFILE NOTICE MODAL */}
+      {cannotDeleteNotice && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-amber-200">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[24px]">info</span>
+              </div>
+              <div>
+                <h3 className="text-[17px] font-bold text-[#071e27]">Primary Account Holder</h3>
+                <p className="text-[13px] text-[#434652] mt-1">{cannotDeleteNotice}</p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setCannotDeleteNotice(null)}
+                className="px-5 py-2 bg-[#003178] text-white font-bold rounded-xl text-[13px] hover:bg-[#0d47a1] cursor-pointer"
+              >
+                Understood
+              </button>
+            </div>
           </div>
         </div>
       )}

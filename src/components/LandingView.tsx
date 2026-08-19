@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ViewMode, UserPersona, HospitalQuote } from '../types';
+import { ViewMode, UserPersona, HospitalQuote, AuthUser } from '../types';
 
 interface LandingViewProps {
   onNavigate: (view: ViewMode) => void;
@@ -8,7 +8,8 @@ interface LandingViewProps {
   onSelectPersona?: (persona: UserPersona) => void;
   onViewHospitalProfile?: (hospitalId: string) => void;
   onOpenAuthModal?: () => void;
-  authUser?: { mobileNumber: string; role: 'admin' | 'patient' | 'hospital' | 'insurance' | 'finance'; name: string } | null;
+  onOpenLogin?: () => void;
+  authUser?: AuthUser | null;
 }
 
 interface ProcedureEstimate {
@@ -744,29 +745,29 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </section>
 
-      {/* SECTION 5: PRODUCTION MOBILE AUTHENTICATION & ACCESS */}
+      {/* SECTION 5: INSTANT GOOGLE & EMAIL ONBOARDING */}
       <section className="bg-gradient-to-r from-[#003178] to-[#071e27] text-white rounded-3xl p-6 sm:p-10 shadow-xl space-y-8">
         <div className="max-w-3xl mx-auto text-center space-y-3">
           <span className="px-3 py-1 bg-[#81f3e5] text-[#006f66] font-extrabold text-[11px] rounded-full uppercase tracking-wider font-mono-data">
-            SECURE MOBILE AUTHENTICATION
+            INSTANT SECURE ONBOARDING
           </span>
           <h2 className="text-[28px] sm:text-[36px] font-black tracking-tight text-white">
             Ready to Compare Verified Hospital Quotations?
           </h2>
           <p className="text-[15px] text-gray-200">
-            Log in using your mobile phone number with instant SMS OTP verification to access case details and hospital quotes.
+            Sign in in seconds with Google or your email. Zero upfront mobile OTP friction required.
           </p>
         </div>
 
         <div className="max-w-xl mx-auto bg-white/10 backdrop-blur rounded-2xl border border-white/20 p-6 sm:p-8 space-y-6 text-center">
           <div className="w-16 h-16 rounded-2xl bg-[#81f3e5] text-[#003178] flex items-center justify-center mx-auto shadow-md">
-            <span className="material-symbols-outlined text-[36px]">smartphone</span>
+            <span className="material-symbols-outlined text-[36px]">account_circle</span>
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-extrabold text-[22px] text-white">Mobile Number OTP Login</h3>
+            <h3 className="font-extrabold text-[22px] text-white">One-Click Google & Email Sign In</h3>
             <p className="text-[13px] text-gray-200">
-              Patients and System Administrators (+919246195689) authenticate via encrypted SMS OTP.
+              Access your medical quotes and clinical analyses immediately. Mobile phone is only requested later when you book or request direct hospital calls.
             </p>
           </div>
 
@@ -776,8 +777,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               onClick={onOpenAuthModal}
               className="px-6 py-3.5 bg-[#81f3e5] hover:bg-white text-[#004f48] font-extrabold text-[15px] rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[20px]">verified_user</span>
-              <span>Sign In with Mobile Number</span>
+              <span className="material-symbols-outlined text-[20px]">login</span>
+              <span>Sign In / Register</span>
             </button>
             <button
               type="button"

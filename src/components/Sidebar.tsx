@@ -1,12 +1,17 @@
 import React from 'react';
-import { ViewMode, UserPersona } from '../types';
+import { ViewMode, UserPersona, AuthUser, StakeholderRole } from '../types';
 
 interface SidebarProps {
   currentView: ViewMode;
   activePersona?: UserPersona;
   onNavigate: (view: ViewMode) => void;
-  onStartNewCase: () => void;
-  authUser?: { mobileNumber: string; role: 'admin' | 'patient' | 'hospital' | 'insurance' | 'finance'; name: string } | null;
+  onStartNewCase?: () => void;
+  activeCasesCount?: number;
+  recordsCount?: number;
+  familyMembersCount?: number;
+  userRole?: StakeholderRole;
+  onRoleChange?: (newRole: any) => void;
+  authUser?: AuthUser | null;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
 }
@@ -106,8 +111,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onOpenAuthModal}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#003178] text-white hover:bg-[#002256] transition-all rounded-xl font-bold text-[12px] shadow-xs cursor-pointer mb-1"
           >
-            <span className="material-symbols-outlined text-[16px]">smartphone</span>
-            <span>Mobile Sign In</span>
+            <span className="material-symbols-outlined text-[16px]">account_circle</span>
+            <span>Sign In / Register</span>
           </button>
         )}
 

@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { ViewMode, MedicalRecord, SurgicalCase, HospitalQuote, FinancingOption, UserPersona, FamilyMember, PatientProfile } from './types';
+import React, { useState, useEffect } from 'react';
+import {
+  ViewMode,
+  MedicalRecord,
+  SurgicalCase,
+  HospitalQuote,
+  FinancingOption,
+  UserPersona,
+  FamilyMember,
+  PatientProfile,
+  AuthUser,
+} from './types';
 import {
   initialPatientProfile,
   initialHealthMetrics,
@@ -12,8 +22,24 @@ import {
   initialPersonas,
   initialFamilyMembers,
 } from './data/mockData';
+import {
+  initializeDatabase,
+  fetchCasesFromCloud,
+  fetchHospitalsFromCloud,
+  fetchFamilyMembersFromCloud,
+  fetchRecordsFromCloud,
+  saveCaseToCloud,
+  deleteCaseFromCloud,
+  saveHospitalToCloud,
+  deleteHospitalFromCloud,
+  saveFamilyMemberToCloud,
+  deleteFamilyMemberFromCloud,
+  saveRecordToCloud,
+  deleteRecordFromCloud,
+} from './lib/dbService';
 
 import { MobileAuthModal } from './components/MobileAuthModal';
+import { PhoneVerificationModal } from './components/PhoneVerificationModal';
 import { VirtualSmsInboxWidget } from './components/VirtualSmsInboxWidget';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
@@ -58,22 +84,20 @@ export const App: React.FC = () => {
   const activeCase = cases.find((c) => c.id === selectedCaseId) || cases[0];
 
   const [selectedHospitalForBooking, setSelectedHospitalForBooking] = useState<HospitalQuote>(
-    activeCase?.hospitals[1] || activeCase?.hospitals[0]
+    activeCase?.hospitals?.[1] || activeCase?.hospitals?.[0] || initialCases[0]?.hospitals?.[0]
   );
   const [selectedFinancing, setSelectedFinancing] = useState<FinancingOption>(defaultFinancingOptions[0]);
   const [selectedHospitalProfileId, setSelectedHospitalProfileId] = useState<string>('apollo-1');
 
-  // Authentication State for Production Mobile Login (+919246195689 as Super Admin)
-  const [authUser, setAuthUser] = useState<{
-    mobileNumber: string;
-    role: 'admin' | 'patient' | 'hospital' | 'insurance' | 'finance';
-    name: string;
-  } | null>({
-    mobileNumber: '+919246195689',
-    role: 'admin',
-    name: 'Super Admin',
-  });
+  // Authentication State with Google OAuth + Email first & deferred phone verification (by default not logged in)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
   const [isMobileAuthModalOpen, setIsMobileAuthModalOpen] = useState(false);
+  const [isPhoneVerificationModalOpen, setIsPhoneVerificationModalOpen] = useState(false);
+  const [phoneVerificationPrompt, setPhoneVerificationPrompt] = useState(
+    '📱 Please verify your mobile number so hospitals can contact you regarding your quotation.'
+  );
+  const [pendingActionAfterPhoneVerification, setPendingActionAfterPhoneVerification] = useState<(() => void) | null>(null);
 
   // Search Query state
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,6 +109,32 @@ export const App: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isBookingSuccessModalOpen, setIsBookingSuccessModalOpen] = useState(false);
 
+  const [isCloudSyncActive, setIsCloudSyncActive] = useState<boolean>(false);
+
+  // Initialize and load persistent data from Cloud Firestore
+  useEffect(() => {
+    async function loadCloudDatabase() {
+      const initResult = await initializeDatabase();
+      setIsCloudSyncActive(initResult.cloudActive);
+
+      if (initResult.cloudActive) {
+        const [cloudCases, cloudHospitals, cloudFamily, cloudRecords] = await Promise.all([
+          fetchCasesFromCloud(),
+          fetchHospitalsFromCloud(),
+          fetchFamilyMembersFromCloud(),
+          fetchRecordsFromCloud(),
+        ]);
+
+        if (cloudCases && cloudCases.length > 0) setCases(cloudCases);
+        if (cloudHospitals && cloudHospitals.length > 0) setAdminHospitals(cloudHospitals);
+        if (cloudFamily && cloudFamily.length > 0) setFamilyMembers(cloudFamily);
+        if (cloudRecords && cloudRecords.length > 0) setRecords(cloudRecords);
+      }
+    }
+
+    loadCloudDatabase();
+  }, []);
+
   // Handlers
   const handleNavigate = (view: ViewMode) => {
     setCurrentView(view);
@@ -93,6 +143,7 @@ export const App: React.FC = () => {
 
   const handleCreateCase = (newCase: SurgicalCase) => {
     setCases([newCase, ...cases]);
+    saveCaseToCloud(newCase);
     setSelectedCaseId(newCase.id);
     if (newCase.patientMemberId) {
       setActiveFamilyMemberId(newCase.patientMemberId);
@@ -102,14 +153,50 @@ export const App: React.FC = () => {
 
   const handleAddRecords = (newRecs: MedicalRecord[]) => {
     setRecords([...newRecs, ...records]);
+    newRecs.forEach((r) => saveRecordToCloud(r));
   };
 
   const handleDeleteRecord = (id: string) => {
     setRecords(records.filter((r) => r.id !== id));
+    deleteRecordFromCloud(id);
   };
 
+  const handleDeleteFamilyMember = (memberId: string) => {
+    setFamilyMembers((prev) => prev.filter((m) => m.id !== memberId));
+    deleteFamilyMemberFromCloud(memberId);
+    if (activeFamilyMemberId === memberId) {
+      const remaining = familyMembers.filter((m) => m.id !== memberId);
+      if (remaining.length > 0) {
+        setActiveFamilyMemberId(remaining[0].id);
+      }
+    }
+  };
+
+  const handleDeleteCase = (caseId: string) => {
+    setCases((prev) => prev.filter((c) => c.id !== caseId));
+    deleteCaseFromCloud(caseId);
+    if (selectedCaseId === caseId) {
+      const remaining = cases.filter((c) => c.id !== caseId);
+      if (remaining.length > 0) {
+        setSelectedCaseId(remaining[0].id);
+      }
+    }
+  };
+
+  // Guard for actions requiring hospital quotation telephone contact
   const handleSelectHospitalForBooking = (hospital: HospitalQuote) => {
     setSelectedHospitalForBooking(hospital);
+
+    // If the patient has not verified their phone number yet, prompt just-in-time
+    if (!authUser?.isPhoneVerified || !authUser?.mobileNumber) {
+      setPhoneVerificationPrompt('📱 Please verify your mobile number so hospitals can contact you regarding your quotation.');
+      setPendingActionAfterPhoneVerification(() => () => {
+        setCurrentView('checkout');
+      });
+      setIsPhoneVerificationModalOpen(true);
+      return;
+    }
+
     setCurrentView('checkout');
   };
 
@@ -119,7 +206,6 @@ export const App: React.FC = () => {
   };
 
   const handleViewHospitalProfile = (hospitalId: string) => {
-    // Map hospital IDs if needed
     if (hospitalId.includes('apollo')) {
       setSelectedHospitalProfileId('apollo-1');
     } else if (hospitalId.includes('fortis')) {
@@ -135,6 +221,16 @@ export const App: React.FC = () => {
 
   const handleConfirmBooking = (financing: FinancingOption) => {
     setSelectedFinancing(financing);
+
+    if (!authUser?.isPhoneVerified || !authUser?.mobileNumber) {
+      setPhoneVerificationPrompt('📱 Verify your mobile number to lock in your surgical slot and receive emergency hospital confirmation.');
+      setPendingActionAfterPhoneVerification(() => () => {
+        setIsBookingSuccessModalOpen(true);
+      });
+      setIsPhoneVerificationModalOpen(true);
+      return;
+    }
+
     setIsBookingSuccessModalOpen(true);
   };
 
@@ -147,21 +243,11 @@ export const App: React.FC = () => {
       prevCases.map((c) => {
         if (c.id === caseId) {
           const existingHospitals = c.hospitals || [];
-          const exists = existingHospitals.some(
-            (h) => h.hospitalName.toLowerCase() === updatedQuote.hospitalName.toLowerCase()
-          );
-
-          const updatedHospitals = exists
-            ? existingHospitals.map((h) =>
-                h.hospitalName.toLowerCase() === updatedQuote.hospitalName.toLowerCase() ? updatedQuote : h
-              )
-            : [updatedQuote, ...existingHospitals];
-
-          return {
-            ...c,
-            hospitals: updatedHospitals,
-            quotesReadyCount: updatedHospitals.length,
-          };
+          const exists = existingHospitals.some((h) => h.id === updatedQuote.id);
+          const newHospitals = exists
+            ? existingHospitals.map((h) => (h.id === updatedQuote.id ? updatedQuote : h))
+            : [...existingHospitals, updatedQuote];
+          return { ...c, hospitals: newHospitals };
         }
         return c;
       })
@@ -174,16 +260,12 @@ export const App: React.FC = () => {
         if (c.id === caseId) {
           return {
             ...c,
-            aiClinicalAnalysis: {
-              overallHealthScore: updatedAnalysis.overallHealthScore || 85,
-              reportSourceText: c.aiClinicalAnalysis?.reportSourceText || 'Uploaded Medical Documents & History',
-              reportAnalysisSummary: updatedAnalysis.reportAnalysisSummary,
-              hospitalSelectionReasoning: updatedAnalysis.hospitalSelectionReasoning,
-              healthIssuesDetected: updatedAnalysis.healthIssuesDetected,
-              treatmentRecommendation: updatedAnalysis.treatmentRecommendation,
-            },
+            aiClinicalAnalysis: updatedAnalysis || c.aiClinicalAnalysis,
+            aiPrimaryRecommendationReason:
+              updatedAnalysis?.treatmentRecommendation?.whyBestTreatment || c.aiPrimaryRecommendationReason,
+            insuranceCompatibilityNotice:
+              updatedAnalysis?.insurancePreAuthEstimate || c.insuranceCompatibilityNotice,
             hospitals: updatedHospitals && updatedHospitals.length > 0 ? updatedHospitals : c.hospitals,
-            aiPrimaryRecommendationReason: `AI analyzed patient reports and symptoms. Primary recommendation: ${updatedAnalysis.treatmentRecommendation.bestTreatmentProcedure} for ${updatedAnalysis.conditionName || updatedAnalysis.selectedTitle}.`,
           };
         }
         return c;
@@ -191,34 +273,26 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleLogout = () => {
-    setAuthUser(null);
-    setCurrentView('landing');
-    setIsMobileAuthModalOpen(true);
+  const handlePhoneVerificationSuccess = (updatedUser: AuthUser) => {
+    setAuthUser(updatedUser);
+
+    if (pendingActionAfterPhoneVerification) {
+      const action = pendingActionAfterPhoneVerification;
+      setPendingActionAfterPhoneVerification(null);
+      action();
+    }
   };
 
-  // Filter records and cases strictly by activeFamilyMemberId and searchQuery
-  const memberRecords = records.filter((r) => r.patientMemberId === activeFamilyMemberId);
-  const filteredRecords = memberRecords.filter((r) =>
-    r.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.category.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter records and cases by active family member
+  const filteredRecords = records.filter(
+    (r) => !r.patientMemberId || r.patientMemberId === activeFamilyMemberId
+  );
+  const memberCases = cases.filter(
+    (c) => !c.patientMemberId || c.patientMemberId === activeFamilyMemberId
   );
 
-  const memberCases = cases.filter((c) => c.patientMemberId === activeFamilyMemberId);
-
   return (
-    <div className="min-h-screen bg-[#f3faff] text-[#071e27] font-sans antialiased selection:bg-[#81f3e5] selection:text-[#00201d]">
-      {/* Desktop Sidebar Navigation */}
-      <Sidebar
-        currentView={currentView}
-        activePersona={activePersona}
-        onNavigate={handleNavigate}
-        onStartNewCase={() => handleNavigate('new-case')}
-        authUser={authUser}
-        onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
-        onLogout={handleLogout}
-      />
-
+    <div className="min-h-screen bg-[#f3faff] flex flex-col font-sans text-[#071e27]">
       {/* Top Header */}
       <TopHeader
         currentView={currentView}
@@ -232,32 +306,40 @@ export const App: React.FC = () => {
         onUpdatePatientProfile={handleUpdatePatientProfile}
         authUser={authUser}
         onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
-        onLogout={handleLogout}
+        onOpenPhoneVerificationModal={() => {
+          setPhoneVerificationPrompt('📱 Verify your mobile number so hospitals can contact you regarding your quotation.');
+          setPendingActionAfterPhoneVerification(null);
+          setIsPhoneVerificationModalOpen(true);
+        }}
+        onLogout={() => {
+          setAuthUser(null);
+          handleNavigate('landing');
+        }}
       />
 
-      {/* Main View Area */}
-      <main className="lg:ml-64 pt-20 px-4 md:px-8 max-w-7xl mx-auto min-h-[calc(100vh-80px)] pb-20 lg:pb-12">
+      {/* Sidebar for Desktop Navigation */}
+      <Sidebar
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        activeCasesCount={cases.length}
+        recordsCount={records.length}
+        familyMembersCount={familyMembers.length}
+        userRole={authUser?.role || 'patient'}
+        onRoleChange={(newRole) => {
+          if (authUser) {
+            setAuthUser({ ...authUser, role: newRole as any });
+          }
+        }}
+        onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 lg:ml-64 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-12">
         {currentView === 'landing' && (
           <LandingView
             onNavigate={handleNavigate}
             onStartNewCase={() => handleNavigate('new-case')}
-            personas={personas}
-            onSelectPersona={setActivePersona}
-            onViewHospitalProfile={handleViewHospitalProfile}
-            onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
-            authUser={authUser}
-          />
-        )}
-
-        {currentView === 'family' && (
-          <FamilyProfilesView
-            familyMembers={familyMembers}
-            cases={cases}
-            onAddFamilyMember={(newMember) => setFamilyMembers([...familyMembers, newMember])}
-            onSelectMemberForNewCase={(member) => {
-              handleNavigate('new-case');
-            }}
-            onNavigate={handleNavigate}
+            onOpenLogin={() => setIsMobileAuthModalOpen(true)}
           />
         )}
 
@@ -265,8 +347,26 @@ export const App: React.FC = () => {
           <NewCaseView
             existingRecords={records}
             familyMembers={familyMembers}
+            activeFamilyMemberId={activeFamilyMemberId}
+            onSelectFamilyMember={setActiveFamilyMemberId}
             onAddRecords={handleAddRecords}
             onCreateCase={handleCreateCase}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentView === 'family' && (
+          <FamilyProfilesView
+            familyMembers={familyMembers}
+            activeMemberId={activeFamilyMemberId}
+            onSelectMember={setActiveFamilyMemberId}
+            onAddMember={(newMem) => setFamilyMembers([...familyMembers, newMem])}
+            onUpdateMember={(updatedMem) =>
+              setFamilyMembers(
+                familyMembers.map((m) => (m.id === updatedMem.id ? updatedMem : m))
+              )
+            }
+            onDeleteMember={handleDeleteFamilyMember}
             onNavigate={handleNavigate}
           />
         )}
@@ -310,8 +410,11 @@ export const App: React.FC = () => {
               setSelectedCaseId(id);
               handleNavigate('quotes');
             }}
-            onSelectRecord={(rec) => alert(`Downloading ${rec.fileName}...`)}
+            onSelectRecord={(rec) => {
+              handleNavigate('records');
+            }}
             onViewHospitalProfile={handleViewHospitalProfile}
+            onDeleteCase={handleDeleteCase}
           />
         )}
 
@@ -336,6 +439,7 @@ export const App: React.FC = () => {
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onNavigate={handleNavigate}
             onUpdateCaseAnalysis={handleUpdateCaseAnalysis}
+            onDeleteCase={handleDeleteCase}
           />
         )}
 
@@ -345,6 +449,11 @@ export const App: React.FC = () => {
             currentCase={activeCase}
             onConfirmBooking={handleConfirmBooking}
             onBackToQuotes={() => handleNavigate('quotes')}
+            authUser={authUser}
+            onOpenPhoneVerification={() => {
+              setPhoneVerificationPrompt('📱 Please verify your mobile number so hospitals can contact you regarding your quotation.');
+              setIsPhoneVerificationModalOpen(true);
+            }}
           />
         )}
 
@@ -382,14 +491,80 @@ export const App: React.FC = () => {
           <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl mx-auto">
             <div className="bg-white rounded-2xl border border-[#c3c6d4] p-6 shadow-sm space-y-6">
               <div className="flex items-center gap-4 pb-4 border-b border-[#c3c6d4]">
-                <img
-                  src={patientProfile.avatarUrl}
-                  alt={patientProfile.name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-[#003178]"
-                />
-                <div>
-                  <h2 className="text-[20px] font-bold text-[#071e27]">{patientProfile.name}</h2>
-                  <p className="text-[13px] text-[#737783] font-mono-data">Patient ID: {patientProfile.patientId}</p>
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#003178] bg-slate-100 flex items-center justify-center">
+                  {authUser?.avatarUrl ? (
+                    <img
+                      src={authUser.avatarUrl}
+                      alt={authUser.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="material-symbols-outlined text-[32px] text-[#003178]">person</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[20px] font-bold text-[#071e27] truncate">
+                      {authUser?.name || patientProfile.name}
+                    </h2>
+                    <span className="px-2 py-0.5 bg-[#003178] text-white text-[10px] font-black rounded uppercase">
+                      {authUser?.role || 'Patient'}
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-[#737783] font-mono-data">
+                    Auth Provider: {authUser?.authProvider ? authUser.authProvider.toUpperCase() : 'GOOGLE'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Verified Identity & Contact Matrix */}
+              <div className="space-y-3 bg-[#f8fafc] p-4 rounded-xl border border-[#c3c6d4]">
+                <h3 className="text-[12px] font-bold text-[#003178] uppercase tracking-wider">
+                  Authentication & Contact Verification
+                </h3>
+
+                {/* Email Verification Status */}
+                <div className="flex items-center justify-between py-2 border-b border-[#c3c6d4]/50 text-[13px]">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-[#003178]">mail</span>
+                    <span className="text-[#434652] font-medium">Email Address:</span>
+                    <strong className="text-[#071e27]">{authUser?.email || 'alex.turner@gmail.com'}</strong>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-full flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                    <span>Verified</span>
+                  </span>
+                </div>
+
+                {/* Phone Verification Status */}
+                <div className="flex items-center justify-between py-2 text-[13px]">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-[#003178]">smartphone</span>
+                    <span className="text-[#434652] font-medium">Mobile Phone:</span>
+                    {authUser?.isPhoneVerified && authUser.mobileNumber ? (
+                      <strong className="text-emerald-800 font-mono-data">{authUser.mobileNumber}</strong>
+                    ) : (
+                      <span className="text-amber-700 italic">Optional (Required for quotations)</span>
+                    )}
+                  </div>
+                  {authUser?.isPhoneVerified && authUser.mobileNumber ? (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-full flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">verified</span>
+                      <span>Verified</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhoneVerificationPrompt('📱 Verify your mobile number so hospitals can contact you regarding your quotation.');
+                        setIsPhoneVerificationModalOpen(true);
+                      }}
+                      className="px-3 py-1 bg-[#003178] hover:bg-[#002256] text-white font-bold text-[11px] rounded-lg shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">verified</span>
+                      <span>Verify Phone via SMS</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -411,7 +586,7 @@ export const App: React.FC = () => {
               <div className="pt-2 flex gap-3">
                 <button
                   onClick={() => handleNavigate('dashboard')}
-                  className="px-5 py-2.5 bg-[#003178] text-white font-bold text-[14px] rounded-xl hover:bg-[#0d47a1]"
+                  className="px-5 py-2.5 bg-[#003178] text-white font-bold text-[14px] rounded-xl hover:bg-[#0d47a1] cursor-pointer"
                 >
                   Return to Dashboard
                 </button>
@@ -436,7 +611,7 @@ export const App: React.FC = () => {
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav currentView={currentView} onNavigate={handleNavigate} />
 
-      {/* Interactive Modals */}
+      {/* Authentication Modals */}
       <MobileAuthModal
         isOpen={isMobileAuthModalOpen}
         onClose={() => setIsMobileAuthModalOpen(false)}
@@ -450,7 +625,19 @@ export const App: React.FC = () => {
             handleNavigate('dashboard');
           }
         }}
-        defaultMobile={authUser?.mobileNumber || '+919246195689'}
+        defaultMobile={authUser?.mobileNumber || ''}
+      />
+
+      {/* Just-in-Time Deferred Phone Verification Modal */}
+      <PhoneVerificationModal
+        isOpen={isPhoneVerificationModalOpen}
+        onClose={() => {
+          setIsPhoneVerificationModalOpen(false);
+          setPendingActionAfterPhoneVerification(null);
+        }}
+        authUser={authUser}
+        onSuccess={handlePhoneVerificationSuccess}
+        actionContext={phoneVerificationPrompt}
       />
 
       <NewCaseModal
@@ -469,7 +656,7 @@ export const App: React.FC = () => {
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        caseCode={activeCase.caseCode}
+        caseCode={activeCase?.caseCode || '#MQ-78291'}
       />
 
       <BookingSuccessModal

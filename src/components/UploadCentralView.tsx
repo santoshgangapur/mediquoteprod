@@ -4,6 +4,7 @@ import { validateMedicalFiles } from '../utils/contentModeration';
 import { ListItem } from './ListItem';
 import { EditItemModal } from './EditItemModal';
 import { MedicalDocumentUploader } from './MedicalDocumentUploader';
+import { initialFamilyMembers } from '../data/mockData';
 
 interface FamilyMemberDropdownProps {
   selectedId: string;
@@ -480,17 +481,7 @@ export const UploadCentralView: React.FC<UploadCentralViewProps> = ({
         <div className="lg:col-span-7 space-y-6">
           {/* Shared Unified Medical Document Uploader Control */}
           <MedicalDocumentUploader
-            familyMembers={
-              familyMembers.length > 0
-                ? familyMembers
-                : [
-                    { id: 'fam-1', fullName: 'Arjun Mehta', relationship: 'Self (Primary)' },
-                    { id: 'fam-2', fullName: 'Priya Mehta', relationship: 'Spouse' },
-                    { id: 'fam-3', fullName: 'Ramesh Mehta', relationship: 'Father' },
-                    { id: 'fam-4', fullName: 'Sunita Mehta', relationship: 'Mother' },
-                    { id: 'fam-5', fullName: 'Aarav Mehta', relationship: 'Son' }
-                  ]
-            }
+            familyMembers={familyMembers && familyMembers.length > 0 ? familyMembers : initialFamilyMembers}
             selectedMemberId={targetUploadMemberId}
             onMemberChange={(memId) => setTargetUploadMemberId(memId)}
             submitButtonText="Process Scans & Add to Records Queue"

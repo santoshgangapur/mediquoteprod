@@ -3,6 +3,8 @@ import { PDFViewer } from './PDFViewer';
 import { FamilyMember } from '../types';
 import { MedicalDocumentUploader, QueuedMedicalFile } from './MedicalDocumentUploader';
 import { ShareModal } from './ShareModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { initialFamilyMembers } from '../data/mockData';
 
 export interface VaultDoc {
   id: string;
@@ -200,6 +202,16 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isVaultShareOpen, setIsVaultShareOpen] = useState<boolean>(false);
 
+  // In-app Delete Confirmation Modal State
+  const [deleteModalConfig, setDeleteModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    itemType: string;
+    itemName: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
   useEffect(() => {
     fetchVaultDocs();
   }, [currentUserMobile]);
@@ -298,33 +310,51 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
   };
 
   // Delete Single Document
-  const handleDeleteDocument = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this document from your Vault DB?')) return;
-    try {
-      await fetch(`/api/vault/documents/${id}`, { method: 'DELETE' });
-      setDocuments((prev) => prev.filter((d) => d.id !== id));
-      setSelectedDocIds((prev) => prev.filter((docId) => docId !== id));
-      if (selectedDocForPreview?.id === id) setSelectedDocForPreview(null);
-      showToast('🗑️ Record deleted successfully');
-    } catch (_err) {
-      showToast('Failed to delete record');
-    }
+  const handleDeleteDocument = (id: string) => {
+    const doc = documents.find((d) => d.id === id);
+    setDeleteModalConfig({
+      isOpen: true,
+      title: 'Delete Vault Document',
+      itemType: 'Vault Document',
+      itemName: doc ? doc.title : 'Medical Document',
+      message: 'Are you sure you want to permanently delete this encrypted document from your Medical DigiLocker Vault? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await fetch(`/api/vault/documents/${id}`, { method: 'DELETE' });
+          setDocuments((prev) => prev.filter((d) => d.id !== id));
+          setSelectedDocIds((prev) => prev.filter((docId) => docId !== id));
+          if (selectedDocForPreview?.id === id) setSelectedDocForPreview(null);
+          if (onDeleteRecord) onDeleteRecord(id);
+          showToast('🗑️ Record deleted successfully');
+        } catch (_err) {
+          showToast('Failed to delete record');
+        }
+      },
+    });
   };
 
   // Batch Delete Selected Documents
-  const handleBatchDelete = async () => {
+  const handleBatchDelete = () => {
     if (selectedDocIds.length === 0) return;
-    if (!confirm(`Permanently delete ${selectedDocIds.length} selected document(s) from Vault?`)) return;
-
-    for (const id of selectedDocIds) {
-      try {
-        await fetch(`/api/vault/documents/${id}`, { method: 'DELETE' });
-      } catch (_e) {}
-    }
-
-    setDocuments((prev) => prev.filter((d) => !selectedDocIds.includes(d.id)));
-    setSelectedDocIds([]);
-    showToast(`🗑️ ${selectedDocIds.length} records deleted from Vault DB`);
+    const count = selectedDocIds.length;
+    setDeleteModalConfig({
+      isOpen: true,
+      title: 'Delete Selected Documents',
+      itemType: 'Bulk Document Deletion',
+      itemName: `${count} Selected Medical Documents`,
+      message: `Are you sure you want to permanently delete ${count} selected document(s) from your Medical DigiLocker Vault?`,
+      onConfirm: async () => {
+        for (const id of selectedDocIds) {
+          try {
+            await fetch(`/api/vault/documents/${id}`, { method: 'DELETE' });
+            if (onDeleteRecord) onDeleteRecord(id);
+          } catch (_e) {}
+        }
+        setDocuments((prev) => prev.filter((d) => !selectedDocIds.includes(d.id)));
+        setSelectedDocIds([]);
+        showToast(`🗑️ ${count} records deleted from Vault DB`);
+      },
+    });
   };
 
   // Edit / Update Document (Title, Category, Patient)
@@ -614,17 +644,7 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
           {/* INLINE BATCH UPLOAD SECTION WITH UNIFIED MEDICAL DOCUMENT UPLOADER */}
           {showInlineUpload && (
             <MedicalDocumentUploader
-              familyMembers={
-                familyMembers.length > 0
-                  ? familyMembers
-                  : [
-                      { id: 'fam-1', fullName: 'Arjun Mehta', relationship: 'Self (Primary)' },
-                      { id: 'fam-2', fullName: 'Priya Mehta', relationship: 'Spouse' },
-                      { id: 'fam-3', fullName: 'Ramesh Mehta', relationship: 'Father' },
-                      { id: 'fam-4', fullName: 'Sunita Mehta', relationship: 'Mother' },
-                      { id: 'fam-5', fullName: 'Aarav Mehta', relationship: 'Son' }
-                    ]
-              }
+              familyMembers={familyMembers && familyMembers.length > 0 ? familyMembers : initialFamilyMembers}
               selectedMemberId={uploadMemberId}
               onMemberChange={(memId) => setUploadMemberId(memId)}
               submitButtonText="Save Records to Vault DB"
@@ -1831,6 +1851,21 @@ export const SecuredVaultView: React.FC<SecuredVaultViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* In-app Delete Confirmation Modal */}
+      {deleteModalConfig && (
+        <ConfirmDeleteModal
+          isOpen={deleteModalConfig.isOpen}
+          title={deleteModalConfig.title}
+          itemType={deleteModalConfig.itemType}
+          itemName={deleteModalConfig.itemName}
+          message={deleteModalConfig.message}
+          confirmText="Yes, Delete Permanently"
+          cancelText="Cancel"
+          onConfirm={deleteModalConfig.onConfirm}
+          onClose={() => setDeleteModalConfig(null)}
+        />
       )}
     </div>
   );

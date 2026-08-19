@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { SurgicalCase, HospitalQuote, ViewMode } from '../types';
 import { AIClinicalAnalysisCard } from './AIClinicalAnalysisCard';
 import { AIClinicalReportModal } from './AIClinicalReportModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface QuotationComparisonViewProps {
-  currentCase: SurgicalCase;
+  currentCase?: SurgicalCase | null;
   onSelectHospitalForBooking: (hospital: HospitalQuote) => void;
   onViewQuoteDetails: (hospital: HospitalQuote) => void;
   onViewHospitalProfile?: (hospitalId: string) => void;
@@ -12,6 +13,7 @@ interface QuotationComparisonViewProps {
   onNavigate: (view: ViewMode) => void;
   onRequestQuoteForHospital?: (hospitalName: string) => void;
   onUpdateCaseAnalysis?: (caseId: string, updatedAnalysis: any, updatedHospitals?: HospitalQuote[]) => void;
+  onDeleteCase?: (caseId: string) => void;
 }
 
 export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = ({
@@ -20,17 +22,22 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
   onViewQuoteDetails,
   onViewHospitalProfile,
   onOpenShareModal,
+  onNavigate,
   onRequestQuoteForHospital,
   onUpdateCaseAnalysis,
+  onDeleteCase,
 }) => {
+  const hospitals = currentCase?.hospitals || [];
   const [aiAdviceText, setAiAdviceText] = useState<string | null>(null);
   const [isLoadingAiAdvice, setIsLoadingAiAdvice] = useState(false);
   const [isRefreshingAI, setIsRefreshingAI] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [selectedMapHospitalId, setSelectedMapHospitalId] = useState<string>(currentCase.hospitals[0]?.id || '');
+  const [selectedMapHospitalId, setSelectedMapHospitalId] = useState<string>(hospitals[0]?.id || '');
 
   const handleRefreshAIAnalysis = async () => {
+    if (!currentCase) return;
     setIsRefreshingAI(true);
     try {
       const res = await fetch('/api/generate-case-recommendations', {
@@ -68,10 +75,28 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
     }
   }, [currentCase?.id]);
 
+  if (!currentCase) {
+    return (
+      <div className="bg-white rounded-2xl border border-[#c3c6d4] p-8 text-center space-y-4 max-w-lg mx-auto my-12">
+        <div className="w-16 h-16 bg-[#dbf1fe] text-[#003178] rounded-2xl flex items-center justify-center mx-auto">
+          <span className="material-symbols-outlined text-[32px]">folder_open</span>
+        </div>
+        <h2 className="text-[20px] font-bold text-[#003178]">No Active Case Selected</h2>
+        <p className="text-[14px] text-[#434652]">Please start a new case or select an existing case from your dashboard to compare hospital quotations.</p>
+        <button
+          onClick={() => onNavigate('new-case')}
+          className="px-6 py-2.5 bg-[#003178] text-white font-bold rounded-xl cursor-pointer hover:bg-[#002256] transition-all"
+        >
+          Create New Surgical Case
+        </button>
+      </div>
+    );
+  }
+
   const downloadCSV = () => {
     const csvRows = [
       ['Hospital Name', 'Total Quote (INR)', 'Room Category', 'Lead Doctor', 'Est. Stay', 'Rating'],
-      ...currentCase.hospitals.map((h) => [
+      ...(currentCase.hospitals || []).map((h) => [
         `"${h.hospitalName}"`,
         h.totalQuoteINR,
         `"${h.roomInclusion}"`,
@@ -142,21 +167,32 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 relative z-10">
+          <div className="flex items-center gap-2.5 shrink-0 relative z-10 flex-wrap">
             <button
               onClick={downloadCSV}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-xl transition-all text-[13px]"
+              className="flex items-center gap-2 px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-xl transition-all text-[13px] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px] text-[#81f3e5]">download</span>
               <span>Export CSV</span>
             </button>
             <button
               onClick={onOpenShareModal}
-              className="flex items-center gap-2 px-4 py-2 bg-[#81f3e5] text-[#00201d] hover:bg-[#6bead9] font-extrabold rounded-xl transition-all text-[13px] shadow-md"
+              className="flex items-center gap-2 px-3.5 py-2 bg-[#81f3e5] text-[#00201d] hover:bg-[#6bead9] font-extrabold rounded-xl transition-all text-[13px] shadow-md cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">share</span>
               <span>Share Review</span>
             </button>
+            {onDeleteCase && (
+              <button
+                type="button"
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/20 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 hover:text-white font-bold rounded-xl transition-all text-[13px] cursor-pointer"
+                title="Delete this surgical case dossier"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span>Delete Case</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -182,7 +218,7 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#c3c6d4]">
           <h2 className="text-[18px] font-extrabold text-[#003178] flex items-center gap-2">
             <span className="material-symbols-outlined text-[#006f66]">payments</span>
-            <span>Hospital Quotations ({currentCase.hospitals.length} Available)</span>
+            <span>Hospital Quotations ({(currentCase.hospitals || []).length} Available)</span>
           </h2>
 
           {/* View Mode Toggle Buttons */}
@@ -234,7 +270,7 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
                 />
 
                 {/* Simulated Pins for each hospital */}
-                {currentCase.hospitals.map((h, idx) => {
+                {(currentCase.hospitals || []).map((h, idx) => {
                   const isSelected = selectedMapHospitalId === h.id || (idx === 0 && !selectedMapHospitalId);
                   const pinPositions = [
                     'top-1/3 left-1/3',
@@ -271,8 +307,8 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
 
               {/* Map Footer Pins Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                {currentCase.hospitals.map((h) => {
-                  const isSelected = selectedMapHospitalId === h.id || (!selectedMapHospitalId && h === currentCase.hospitals[0]);
+                {(currentCase.hospitals || []).map((h) => {
+                  const isSelected = selectedMapHospitalId === h.id || (!selectedMapHospitalId && h === (currentCase.hospitals || [])[0]);
                   return (
                     <button
                       key={h.id}
@@ -300,7 +336,8 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
 
             {/* Highlighted Quote Card below map */}
             {(() => {
-              const selectedHosp = currentCase.hospitals.find((h) => h.id === selectedMapHospitalId) || currentCase.hospitals[0];
+              const hospList = currentCase.hospitals || [];
+              const selectedHosp = hospList.find((h) => h.id === selectedMapHospitalId) || hospList[0];
               if (!selectedHosp) return null;
               const isAiRecommended = selectedHosp.badge === 'AI RECOMMENDED' || selectedHosp.badge === 'BEST VALUE';
 
@@ -420,7 +457,7 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
         ) : (
           /* STANDARD LIST VIEW RENDER */
           <div className="space-y-5">
-            {currentCase.hospitals.map((hospital) => {
+            {(currentCase.hospitals || []).map((hospital) => {
               const isAiRecommended = hospital.badge === 'AI RECOMMENDED' || hospital.badge === 'BEST VALUE';
 
               return (
@@ -602,6 +639,27 @@ export const QuotationComparisonView: React.FC<QuotationComparisonViewProps> = (
           {aiAdviceText || currentCase.insuranceCompatibilityNotice}
         </p>
       </div>
+
+      {/* Confirm Delete Case Modal */}
+      {currentCase && (
+        <ConfirmDeleteModal
+          isOpen={isConfirmDeleteOpen}
+          title="Delete Surgical Case Dossier"
+          itemType="Surgical Case"
+          itemName={`${currentCase.title} (${currentCase.caseCode})`}
+          message="Are you sure you want to permanently delete this surgical case dossier? You will be redirected to the dashboard."
+          confirmText="Yes, Delete Case"
+          cancelText="Keep Case"
+          onConfirm={() => {
+            if (onDeleteCase) {
+              onDeleteCase(currentCase.id);
+              onNavigate('dashboard');
+            }
+            setIsConfirmDeleteOpen(false);
+          }}
+          onClose={() => setIsConfirmDeleteOpen(false)}
+        />
+      )}
     </div>
   );
 };

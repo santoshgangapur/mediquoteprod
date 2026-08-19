@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import JSZip from 'jszip';
+import { AuthUser } from '../types';
 
 interface PlayStoreExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  authUser?: {
-    mobileNumber: string;
-    role: 'admin' | 'patient' | 'hospital' | 'insurance' | 'finance';
-    name: string;
-  } | null;
+  authUser?: AuthUser | null;
 }
 
 export const PlayStoreExportModal: React.FC<PlayStoreExportModalProps> = ({
@@ -876,6 +873,47 @@ end`;
                       <span className="material-symbols-outlined text-[20px]">android</span>
                       <span>Direct APK Download</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* Resolution Card for Google Play "Signed with the wrong key" (SHA1 mismatch) Error */}
+                <div className="p-4 bg-amber-950/90 text-amber-100 rounded-2xl border-2 border-amber-500/50 space-y-3 text-[12px] shadow-lg">
+                  <div className="flex items-center gap-2 text-amber-300 font-extrabold text-[13px] border-b border-amber-500/30 pb-2">
+                    <span className="material-symbols-outlined text-[20px] text-amber-400">fingerprint</span>
+                    <span>Fixing Google Play Error: "Your App Bundle is signed with the wrong key" (SHA1 Mismatch)</span>
+                  </div>
+
+                  <p className="leading-relaxed">
+                    Google Play rejected the upload because an earlier version of your app was registered with certificate fingerprint <code className="bg-black/50 text-amber-300 px-1 py-0.5 rounded font-mono text-[11px]">47:1C:8F...</code>, but your new bundle was signed with a new key (<code className="bg-black/50 text-amber-200 px-1 py-0.5 rounded font-mono text-[11px]">1B:C6:00...</code>).
+                  </p>
+
+                  <div className="p-3 bg-black/50 rounded-xl border border-amber-500/40 space-y-2">
+                    <div className="font-extrabold text-white text-[12px] flex items-center justify-between">
+                      <span className="text-[#81f3e5] flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                        <span>Solution Option 1: Use Your Original Keystore (Recommended)</span>
+                      </span>
+                    </div>
+
+                    <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-amber-100 leading-relaxed font-sans">
+                      <li>Go to <a href={`https://www.pwabuilder.com/report?site=${encodeURIComponent(publicSharedOrigin)}`} target="_blank" rel="noopener noreferrer" className="text-[#81f3e5] underline font-bold">PWABuilder</a> → <strong>Package for Store</strong> → <strong>Android</strong> → <strong>Options</strong>.</li>
+                      <li>Select <strong>"Use Existing Key"</strong>.</li>
+                      <li>Upload the original <code className="text-[#81f3e5] font-mono">signing.keystore</code> file you saved when you first created this app on Google Play.</li>
+                      <li>Enter the original <strong>Key Alias</strong> and <strong>Passwords</strong> from your saved <code className="text-[#81f3e5] font-mono">signing.txt</code>.</li>
+                      <li>Download the package and upload to Google Play Console — it will match fingerprint <code className="font-mono text-amber-300">47:1C:8F...</code> perfectly!</li>
+                    </ol>
+                  </div>
+
+                  <div className="p-3 bg-amber-900/40 rounded-xl border border-amber-500/30 space-y-1.5 text-[11px]">
+                    <span className="font-extrabold text-amber-300 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[15px]">help</span>
+                      <span>Solution Option 2: If you lost your original keystore file or password:</span>
+                    </span>
+                    <p className="text-amber-100 leading-relaxed">
+                      1. In <strong>Google Play Console</strong>, go to <strong>Setup</strong> → <strong>App Integrity</strong>.<br />
+                      2. Under <strong>App Signing</strong>, click <strong>"Request key reset"</strong>.<br />
+                      3. Select "I lost my upload key". Google Play will reset the required fingerprint to your new key (<code className="font-mono text-amber-300">1B:C6:00...</code>) within 24 hours so you can upload your new bundle!
+                    </p>
                   </div>
                 </div>
 

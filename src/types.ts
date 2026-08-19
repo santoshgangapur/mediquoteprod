@@ -42,7 +42,7 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'Patient' | 'Doctor' | 'Hospital Coordinator' | 'System Admin';
+  role: 'Admin' | 'System Admin' | 'Patient' | 'Doctor' | 'Hospital Coordinator';
   status: 'Active' | 'Blocked' | 'Pending Verification';
   joinedDate: string;
   assignedHospital?: string;
@@ -305,5 +305,23 @@ export interface EquipmentItem {
   safetyStatus: 'Verified Safe' | 'Pending Safety Moderation' | 'Blocked (Safety Violation)';
   lastScannedDate?: string;
   moderationReason?: string;
+}
+
+export type StakeholderRole = 'patient' | 'hospital' | 'insurance' | 'finance' | 'admin';
+
+export interface AuthUser {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  mobileNumber?: string;
+  isPhoneVerified: boolean;
+  role: StakeholderRole;
+  authProvider: 'google' | 'email' | 'mobile' | 'demo';
+  avatarUrl?: string;
+  city?: string;
+  organizationName?: string;
+  registrationNo?: string;
+  stakeholderDetails?: any;
 }
 

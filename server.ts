@@ -130,11 +130,11 @@ async function startServer() {
         id: "usr-admin-1",
         mobileNumber: "+919246195689",
         role: "admin",
-        name: "Super Admin (+919246195689)",
-        email: "admin@mediquote.ai",
-        organizationName: "MediQuote AI Global Operations",
-        registrationNo: "ADMIN-GLOBAL-001",
-        city: "Hyderabad",
+        name: "Santosh Gangapur",
+        email: "santoshgangapur@gmail.com",
+        organizationName: "MediQuote AI Operations",
+        registrationNo: "ADMIN-001",
+        city: "Bangalore",
         status: "VERIFIED",
         createdAt: new Date().toISOString()
       },
@@ -350,25 +350,27 @@ async function startServer() {
     });
   });
 
-  // API Route: Check Mobile Registration (/api/auth/check-mobile)
+  // API Route: Check User / Mobile Registration (/api/auth/check-mobile)
   app.post("/api/auth/check-mobile", (req, res) => {
     try {
-      const { mobileNumber } = req.body || {};
-      if (!mobileNumber) {
-        return res.status(400).json({ registered: false, error: "Mobile number is required" });
-      }
-      const cleanMobile = mobileNumber.replace(/\s+/g, "");
+      const { mobileNumber, email } = req.body || {};
+      const cleanMobile = mobileNumber ? mobileNumber.replace(/\s+/g, "") : "";
       const rawDigits = cleanMobile.replace(/\D/g, "");
+      const cleanEmail = email ? email.trim().toLowerCase() : "";
 
       // Super admin master bypass check
-      if (cleanMobile === "+919246195689" || rawDigits === "9246195689") {
+      if (cleanMobile === "+919246195689" || rawDigits === "9246195689" || cleanEmail === "admin@mediquote.ai") {
         return res.json({
           registered: true,
           user: {
             id: "usr-admin-1",
             mobileNumber: "+919246195689",
+            email: "admin@mediquote.ai",
+            emailVerified: true,
+            isPhoneVerified: true,
             role: "admin",
             name: "Super Admin (+919246195689)",
+            authProvider: "mobile",
             status: "VERIFIED"
           }
         });
@@ -376,9 +378,15 @@ async function startServer() {
 
       const db = readDb();
       const user = (db.users || []).find((u: any) => {
-        const uClean = (u.mobileNumber || "").replace(/\s+/g, "");
-        const uDigits = uClean.replace(/\D/g, "");
-        return uClean === cleanMobile || uDigits === rawDigits || uDigits.slice(-10) === rawDigits.slice(-10);
+        if (cleanEmail && u.email && u.email.trim().toLowerCase() === cleanEmail) {
+          return true;
+        }
+        if (cleanMobile) {
+          const uClean = (u.mobileNumber || "").replace(/\s+/g, "");
+          const uDigits = uClean.replace(/\D/g, "");
+          return uClean === cleanMobile || (rawDigits.length >= 10 && uDigits.slice(-10) === rawDigits.slice(-10));
+        }
+        return false;
       });
 
       if (user) {
@@ -386,7 +394,9 @@ async function startServer() {
       } else {
         return res.json({
           registered: false,
-          message: `Mobile number ${cleanMobile} is not registered in MediQuote DB. Registration required.`
+          message: cleanMobile 
+            ? `Mobile number ${cleanMobile} is not registered in MediQuote DB. Registration required.`
+            : `Email ${cleanEmail} is not registered in MediQuote DB.`
         });
       }
     } catch (err: any) {
@@ -394,28 +404,90 @@ async function startServer() {
     }
   });
 
+  // API Route: Google OAuth Sign-in & Fast Signup (/api/auth/google)
+  app.post("/api/auth/google", (req, res) => {
+    try {
+      const { email, name, avatarUrl, role, organizationName, registrationNo, city } = req.body || {};
+      if (!email || !name) {
+        return res.status(400).json({ success: false, error: "Email and Name are required for Google Sign-In" });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const db = readDb();
+      if (!db.users) db.users = [];
+
+      const existingIndex = db.users.findIndex((u: any) => (u.email || "").trim().toLowerCase() === cleanEmail);
+
+      let user: any;
+      if (existingIndex >= 0) {
+        // Update existing user profile
+        user = {
+          ...db.users[existingIndex],
+          name: name.trim() || db.users[existingIndex].name,
+          avatarUrl: avatarUrl || db.users[existingIndex].avatarUrl,
+          emailVerified: true,
+          authProvider: "google"
+        };
+        db.users[existingIndex] = user;
+      } else {
+        // Create new user (Zero SMS friction - phone is optional initially)
+        user = {
+          id: `usr-g-${Date.now()}`,
+          email: cleanEmail,
+          emailVerified: true,
+          name: name.trim(),
+          avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+          role: role || "patient",
+          mobileNumber: "",
+          isPhoneVerified: false,
+          authProvider: "google",
+          city: city?.trim() || "Bangalore",
+          organizationName: organizationName?.trim() || "",
+          registrationNo: registrationNo?.trim() || "",
+          status: "VERIFIED",
+          createdAt: new Date().toISOString()
+        };
+        db.users.push(user);
+      }
+
+      writeDb(db);
+      return res.json({
+        success: true,
+        user,
+        message: "Signed in successfully with Google OAuth. Email automatically verified."
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // API Route: User Registration (/api/auth/register)
   app.post("/api/auth/register", (req, res) => {
     try {
-      const { mobileNumber, role, name, email, city, registrationNo, organizationName } = req.body || {};
-      if (!mobileNumber || !role || !name) {
-        return res.status(400).json({ success: false, error: "Mobile number, role, and name are required for DB registration." });
+      const { mobileNumber, role, name, email, city, registrationNo, organizationName, authProvider, isPhoneVerified } = req.body || {};
+      if (!role || !name) {
+        return res.status(400).json({ success: false, error: "Role and name are required for DB registration." });
       }
 
-      const cleanMobile = mobileNumber.replace(/\s+/g, "");
+      const cleanMobile = mobileNumber ? mobileNumber.replace(/\s+/g, "") : "";
+      const cleanEmail = email ? email.trim().toLowerCase() : "";
       const db = readDb();
 
       const existingIndex = (db.users || []).findIndex((u: any) => {
-        const uClean = (u.mobileNumber || "").replace(/\s+/g, "");
-        return uClean === cleanMobile;
+        if (cleanEmail && u.email && u.email.trim().toLowerCase() === cleanEmail) return true;
+        if (cleanMobile && u.mobileNumber && u.mobileNumber.replace(/\s+/g, "") === cleanMobile) return true;
+        return false;
       });
 
       const newUser = {
         id: existingIndex >= 0 ? db.users[existingIndex].id : `usr-${Date.now()}`,
         mobileNumber: cleanMobile,
+        isPhoneVerified: isPhoneVerified || Boolean(cleanMobile && (cleanMobile === "+919246195689" || isPhoneVerified)),
+        email: cleanEmail,
+        emailVerified: true,
         role: role || "patient",
         name: name.trim(),
-        email: email?.trim() || "",
+        authProvider: authProvider || (cleanMobile ? "mobile" : "email"),
         city: city?.trim() || "",
         registrationNo: registrationNo?.trim() || "",
         organizationName: organizationName?.trim() || "",
@@ -425,13 +497,69 @@ async function startServer() {
 
       if (!db.users) db.users = [];
       if (existingIndex >= 0) {
-        db.users[existingIndex] = newUser;
+        db.users[existingIndex] = { ...db.users[existingIndex], ...newUser };
       } else {
         db.users.push(newUser);
       }
 
       writeDb(db);
       res.json({ success: true, user: newUser, message: "User account created and saved in MediQuote DB." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // API Route: Verify & Update Phone OTP (/api/auth/verify-phone)
+  app.post("/api/auth/verify-phone", (req, res) => {
+    try {
+      const { mobileNumber, otp, email, userId } = req.body || {};
+      if (!mobileNumber) {
+        return res.status(400).json({ success: false, error: "Mobile number is required." });
+      }
+
+      const cleanMobile = mobileNumber.replace(/\s+/g, "");
+      const db = readDb();
+      if (!db.users) db.users = [];
+
+      // Find user by id, email, or mobile
+      let userIndex = -1;
+      if (userId) {
+        userIndex = db.users.findIndex((u: any) => u.id === userId);
+      }
+      if (userIndex === -1 && email) {
+        userIndex = db.users.findIndex((u: any) => (u.email || "").trim().toLowerCase() === email.trim().toLowerCase());
+      }
+      if (userIndex === -1 && cleanMobile) {
+        userIndex = db.users.findIndex((u: any) => (u.mobileNumber || "").replace(/\s+/g, "") === cleanMobile);
+      }
+
+      let updatedUser: any;
+      if (userIndex >= 0) {
+        db.users[userIndex].mobileNumber = cleanMobile;
+        db.users[userIndex].isPhoneVerified = true;
+        updatedUser = db.users[userIndex];
+      } else {
+        updatedUser = {
+          id: `usr-${Date.now()}`,
+          mobileNumber: cleanMobile,
+          isPhoneVerified: true,
+          email: email || "",
+          emailVerified: !!email,
+          role: "patient",
+          name: "Patient User",
+          authProvider: "mobile",
+          status: "VERIFIED",
+          createdAt: new Date().toISOString()
+        };
+        db.users.push(updatedUser);
+      }
+
+      writeDb(db);
+      return res.json({
+        success: true,
+        user: updatedUser,
+        message: `Mobile number ${cleanMobile} successfully verified! Hospitals can now coordinate quotations.`
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
