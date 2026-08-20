@@ -864,6 +864,24 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
                 {/* Dropdown Menu Links */}
                 <div className="space-y-0.5 text-[13px]">
+                  {/* Admin Desk Link - Shown strictly for Admin */}
+                  {(authUser.role === 'admin' || authUser.email === 'santoshgangapur@gmail.com') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        onNavigate('admin');
+                      }}
+                      className="w-full flex items-center justify-between gap-2.5 px-3 py-2 bg-[#e6f6ff] text-[#003178] hover:bg-[#cfe6f2] rounded-xl font-extrabold transition-all text-left cursor-pointer border border-[#003178]/20"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="material-symbols-outlined text-[18px] text-[#003178]">admin_panel_settings</span>
+                        <span>Admin Desk</span>
+                      </div>
+                      <span className="text-[9px] bg-[#003178] text-white px-1.5 py-0.5 rounded font-black">ADMIN</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {

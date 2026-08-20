@@ -25,6 +25,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAuthModal,
   onLogout,
 }) => {
+  const isAdmin = authUser?.role === 'admin' || authUser?.email === 'santoshgangapur@gmail.com';
+
   const allNavItems: { id: ViewMode; label: string; icon: string; badge?: string }[] = [
     { id: 'landing' as ViewMode, label: 'Home', icon: 'home' },
     { id: 'dashboard' as ViewMode, label: 'Dashboard', icon: 'dashboard' },
@@ -33,7 +35,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'family' as ViewMode, label: 'Family Profiles', icon: 'family_restroom' },
     { id: 'doctor-portal' as ViewMode, label: 'Doctor & Hospital Desk', icon: 'stethoscope' },
     { id: 'records' as ViewMode, label: 'Medical DigiLocker', icon: 'shield_lock' },
-    { id: 'admin' as ViewMode, label: 'Admin Desk', icon: 'admin_panel_settings', badge: authUser?.role === 'admin' ? 'ADMIN' : undefined },
+    ...(isAdmin
+      ? [{ id: 'admin' as ViewMode, label: 'Admin Desk', icon: 'admin_panel_settings', badge: 'ADMIN' }]
+      : []),
   ];
 
   const navItems = allNavItems;
