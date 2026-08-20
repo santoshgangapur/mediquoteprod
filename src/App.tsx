@@ -415,6 +415,7 @@ export const App: React.FC = () => {
       <Sidebar
         currentView={currentView}
         onNavigate={handleNavigate}
+        onStartNewCase={() => handleNavigate('new-case')}
         activeCasesCount={cases.length}
         recordsCount={records.length}
         familyMembersCount={familyMembers.length}
@@ -433,7 +434,10 @@ export const App: React.FC = () => {
           <LandingView
             onNavigate={handleNavigate}
             onStartNewCase={() => handleNavigate('new-case')}
+            onOpenAuthModal={() => setIsMobileAuthModalOpen(true)}
             onOpenLogin={() => setIsMobileAuthModalOpen(true)}
+            onViewHospitalProfile={handleViewHospitalProfile}
+            authUser={authUser}
           />
         )}
 
@@ -452,8 +456,13 @@ export const App: React.FC = () => {
         {currentView === 'family' && (
           <FamilyProfilesView
             familyMembers={familyMembers}
+            cases={cases}
             activeMemberId={activeFamilyMemberId}
             onSelectMember={setActiveFamilyMemberId}
+            onSelectMemberForNewCase={(member) => {
+              setActiveFamilyMemberId(member.id);
+              handleNavigate('new-case');
+            }}
             onAddMember={(newMem) => setFamilyMembers([...familyMembers, newMem])}
             onUpdateMember={(updatedMem) =>
               setFamilyMembers(

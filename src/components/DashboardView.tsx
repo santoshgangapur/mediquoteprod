@@ -72,7 +72,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>Upload Reports</span>
           </button>
           <button
-            onClick={onStartNewCase}
+            type="button"
+            onClick={onStartNewCase ? onStartNewCase : () => onNavigate('new-case')}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#003178] text-white font-bold hover:bg-[#0d47a1] transition-all shadow-md text-[14px] cursor-pointer"
           >
             <span className="material-symbols-outlined text-[20px]">add</span>
@@ -384,8 +385,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Start a new case or upload your medical reports to get instant quotes from top hospitals.
               </p>
               <button
-                onClick={onStartNewCase}
-                className="px-6 py-2.5 bg-[#003178] text-white font-bold rounded-xl"
+                type="button"
+                onClick={onStartNewCase ? onStartNewCase : () => onNavigate('new-case')}
+                className="px-6 py-2.5 bg-[#003178] text-white font-bold rounded-xl hover:bg-[#0d47a1] transition-all shadow-sm cursor-pointer"
               >
                 Create New Case
               </button>

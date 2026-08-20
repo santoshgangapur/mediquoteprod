@@ -296,7 +296,15 @@ export const FamilyProfilesView: React.FC<FamilyProfilesViewProps> = ({
                 <div className="flex items-center flex-wrap gap-2">
                   {/* Start Surgical Case Button */}
                   <button
-                    onClick={() => onSelectMemberForNewCase && onSelectMemberForNewCase(member)}
+                    type="button"
+                    onClick={() => {
+                      if (onSelectMemberForNewCase) {
+                        onSelectMemberForNewCase(member);
+                      } else {
+                        if (onSelectMember) onSelectMember(member.id);
+                        onNavigate('new-case');
+                      }
+                    }}
                     className="px-3.5 py-2 bg-[#003178] text-white font-bold text-[12px] rounded-xl hover:bg-[#0d47a1] transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                     title="Start quotation request for this family member"
                   >

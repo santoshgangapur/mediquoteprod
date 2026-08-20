@@ -59,6 +59,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Links */}
         <nav className="flex-1 space-y-1 overflow-y-auto pr-0.5">
+          {/* Start New Case Button (Above Home) */}
+          <div className="pb-2">
+            <button
+              type="button"
+              onClick={onStartNewCase ? onStartNewCase : () => onNavigate('new-case')}
+              className="w-full py-2.5 px-3 bg-[#003178] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#0d47a1] active:scale-[0.98] transition-all shadow-sm text-[13px] cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              <span>Start New Case</span>
+            </button>
+          </div>
+
           {navItems.map((item) => {
             const isActive =
               currentView === item.id ||
@@ -94,39 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
-
-          {/* Start New Case Button */}
-          <div className="pt-2 pb-1">
-            <button
-              onClick={onStartNewCase}
-              className="w-full py-2.5 px-3 bg-[#003178] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#0d47a1] active:scale-[0.98] transition-all shadow-sm text-[13px] cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              <span>Start New Case</span>
-            </button>
-          </div>
         </nav>
-      </div>
-
-      {/* Bottom Footer Action */}
-      <div className="pt-2 border-t border-[#c3c6d4] shrink-0 space-y-1">
-        {!authUser && (
-          <button
-            onClick={onOpenAuthModal}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#003178] text-white hover:bg-[#002256] transition-all rounded-xl font-bold text-[12px] shadow-xs cursor-pointer mb-1"
-          >
-            <span className="material-symbols-outlined text-[16px]">account_circle</span>
-            <span>Sign In / Register</span>
-          </button>
-        )}
-
-        <button
-          onClick={() => alert('MediQuote AI Concierge Support: 24/7 Helpline +91-800-425-9921')}
-          className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-[#434652] hover:bg-[#cfe6f2] transition-all rounded-lg font-medium text-[13px] cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">help</span>
-          <span>Support & Helpline</span>
-        </button>
       </div>
     </aside>
   );
